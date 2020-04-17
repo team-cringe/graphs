@@ -5,7 +5,11 @@ set(SOURCE ${PROJECT_SOURCE_DIR}/src)
 set(INCLUDE ${PROJECT_SOURCE_DIR}/include)
 set(DATA ${PROJECT_SOURCE_DIR}/data)
 
-set(GRAPHS_SOURCES ${SOURCE}/assessment.cpp ${SOURCE}/planning.cpp ${SOURCE}/main.cpp)
+set(GRAPHS_SOURCES ${SOURCE}/assessment.cpp
+                   ${SOURCE}/planning.cpp
+                   ${SOURCE}/graph.cpp
+                   ${SOURCE}/main.cpp)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
 add_executable(graphs ${GRAPHS_SOURCES})
@@ -23,7 +27,7 @@ find_package(Threads REQUIRED)
 # Move necessary data files to build directory.
 configure_file(data/NNMap.pbf ${CMAKE_CURRENT_BINARY_DIR}/NNMap.pbf COPYONLY)
 
-target_compile_options(graphs PRIVATE -Werror -Wall -Wextra -O3)
+target_compile_options(graphs PRIVATE -Werror -Wall -Wextra -g)
 
 target_link_libraries(graphs PUBLIC ${OSMIUM_IO_LIBRARIES}
                                     ${ZLIB_LIBRARIES}
