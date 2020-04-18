@@ -25,7 +25,13 @@ bool Graph::add_node(uint64_t id) {
 }
 
 bool Graph::add_edge(uint64_t from, uint64_t to) {
-    return _edges.emplace(from, to).second;
+    auto node_from = _nodes.find(Node(from));
+    if ((node_from != _nodes.end() and _nodes.find(Node(to)) != _nodes.end())) {
+        auto result = node_from->_neighbors.emplace(from, to);
+        _edges += result.second;
+        return result.second;
+    }
+    return false;
 }
 
 Graph Graph::from_map(osmium::io::File &input_file) {
@@ -57,8 +63,8 @@ Graph Graph::from_map(osmium::io::File &input_file) {
         void way(const osmium::Way &way) noexcept {
             auto prev = way.nodes().begin();
             for (const osmium::NodeRef &nr : way.nodes()) {
-                if ((count_handler.nodes_counter.find(nr.positive_ref())->second > 1 &&
-                     nr != *way.nodes().begin()) ||
+                if ((count_handler.nodes_counter.find(nr.positive_ref())->second > 1 and
+                     nr != *way.nodes().begin()) or
                     nr == *way.nodes().crbegin()) {
                     add_edge_with_nodes(prev->positive_ref(), nr.positive_ref());
                     prev = &nr;
