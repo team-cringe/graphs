@@ -30,7 +30,7 @@ using AdjacencyList = set<Edge>;
 
 class Node {
     uint64_t _id;
-    AdjacencyList _neighbors;
+    mutable AdjacencyList _neighbors;
 
 public:
     explicit Node(uint64_t id) : _id(id), _neighbors(AdjacencyList()) {}
