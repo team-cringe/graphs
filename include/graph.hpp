@@ -11,9 +11,11 @@ class Edge {
     uint64_t _from;
     uint64_t _to;
 public:
-    explicit Edge(uint64_t from, uint64_t to) : _from(from), _to(to) {}
+    explicit Edge(uint64_t from, uint64_t to)
+        : _from(from)
+        , _to(to) {}
 
-    bool operator<(const Edge &other) const;
+    bool operator<(const Edge& other) const;
 
     [[nodiscard]]
     uint64_t from() const {
@@ -33,9 +35,11 @@ class Node {
     mutable AdjacencyList _neighbors;
 
 public:
-    explicit Node(uint64_t id) : _id(id), _neighbors(AdjacencyList()) {}
+    explicit Node(uint64_t id)
+        : _id(id)
+        , _neighbors(AdjacencyList()) {}
 
-    bool operator<(const Node &other) const {
+    bool operator<(const Node& other) const {
         return _id < other._id;
     }
 
@@ -45,27 +49,29 @@ public:
     }
 
     [[nodiscard]]
-    const AdjacencyList &neighbors() const {
+    const AdjacencyList& neighbors() const {
         return _neighbors;
     }
 
     friend class Graph;
 };
 
-std::ostream &operator<<(std::ostream &out, const Edge &edge);
+std::ostream& operator<<(std::ostream& out, const Edge& edge);
 
 class Graph {
     set<Node> _nodes;
     uint64_t _edges;
 public:
-    explicit Graph() : _nodes(set<Node>()), _edges(0) {}
+    explicit Graph()
+        : _nodes(set<Node>())
+        , _edges(0) {}
 
     bool add_node(uint64_t id);
 
     bool add_edge(uint64_t from, uint64_t to);
 
     [[nodiscard]]
-    const set<Node> &nodes() const {
+    const set<Node>& nodes() const {
         return _nodes;
     }
 
@@ -74,7 +80,7 @@ public:
         return _edges;
     }
 
-    static Graph from_map(osmium::io::File &);
+    static Graph from_map(osmium::io::File&);
 };
 
 #endif //GRAPHS_GRAPH_HPP
