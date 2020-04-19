@@ -27,7 +27,7 @@ find_package(Threads REQUIRED)
 # Move necessary data files to build directory.
 configure_file(data/NNMap.pbf ${CMAKE_CURRENT_BINARY_DIR}/NNMap.pbf COPYONLY)
 
-target_compile_options(graphs PRIVATE -Werror -Wall -Wextra -g)
+target_compile_options(graphs PRIVATE -Werror -Wall -Wextra -O3)
 
 target_link_libraries(graphs PUBLIC ${OSMIUM_IO_LIBRARIES}
                                     ${ZLIB_LIBRARIES}
