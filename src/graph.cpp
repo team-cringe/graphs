@@ -6,6 +6,8 @@
 
 #include "graph.hpp"
 
+uint64_t Node::_time = 0;
+
 bool Graph::add_node(uint64_t id_osm) {
     _nodes.emplace_back(id_osm);
     return true;
@@ -82,4 +84,63 @@ Graph Graph::from_osm(osmium::io::File& input_file) {
     add_edges_reader.close();
 
     return graph;
+}
+
+void Graph::bfs(uint64_t start_id) {
+    for (auto& node : _nodes) {
+        node._color = Node::Color::white;
+        node._parent = nullptr;
+        node._d = 0;
+    }
+    _nodes[start_id]._color = Node::Color::gray;
+    std::queue<Node*> Q = std::queue<Node*>();
+    Q.push(&_nodes[start_id]);
+
+    while (not Q.empty()) {
+        Node* u = Q.front();
+        Q.pop();
+        for (auto v_id: u->_neighbors) {
+            auto& v = _nodes[v_id];
+            if (v._color == Node::Color::white) {
+                v._color = Node::Color::gray;
+                v._d = u->_d + 1;
+                v._parent = u;
+                Q.push(&v);
+            }
+        }
+        u->_color = Node::Color::black;
+    }
+}
+
+void Graph::dfs(uint64_t start_id) {
+    for (auto& u: _nodes) {
+        u._color = Node::Color::white;
+        u._parent = nullptr;
+    }
+    Node::_time = 0;
+
+    std::stack<uint64_t> S;
+    Node* v_curr = &_nodes[start_id];
+    v_curr->_d = Node::_time;
+    S.push(0);
+
+    while (not S.empty()) {
+        // if not all nodes are visited
+        while (S.top() < v_curr->_neighbors.size()) {
+            auto u = &_nodes[v_curr->_neighbors[S.top()]];
+            if (u->_color != Node::Color::white) {
+                ++S.top();
+                continue;
+            }
+            u->_d = ++Node::_time;
+            u->_color = Node::Color::gray;
+            u->_parent = v_curr;
+            v_curr = u;
+            S.push(0);
+        }
+        v_curr->_color = Node::Color::black;
+        v_curr->_f = ++Node::_time;
+        v_curr = v_curr->_parent;
+        S.pop();
+    }
 }
