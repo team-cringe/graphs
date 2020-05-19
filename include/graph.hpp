@@ -1,83 +1,76 @@
-#ifndef GRAPHS_GRAPH_HPP
-#define GRAPHS_GRAPH_HPP
+#ifndef GRAPH_HPP
+#define GRAPH_HPP
 
-#include <ostream>
-#include <vector>
+#include <cmath>
+#include <unordered_map>
+#include <unordered_set>
+
+#include <boost/functional/hash.hpp>
+
+#include <osmium/osm/types.hpp>
+#include <osmium/index/map/flex_mem.hpp>
+#include <osmium/handler/node_locations_for_ways.hpp>
+#include <osmium/io/pbf_input.hpp>
+#include <osmium/handler.hpp>
 #include <osmium/visitor.hpp>
-#include <queue>
-#include <stack>
 
-using AdjacencyList = std::vector<uint64_t>;
+namespace graph {
+using Distance = double;
+using Angle = long double;
+using Position = std::pair<Angle, Angle>;
 
-class Node {
-public:
-    enum Color { white, gray, black };
+using Node = std::uint64_t;
+using Edge = std::pair<Node, Node>;
+
+struct Graph {
 private:
-    uint64_t _id_osm;
-    mutable AdjacencyList _neighbors;
-    //bfs and dfs
-    Color _color;
-    Node* _parent;
-
-    uint64_t _d;
-    uint64_t _f;
-
-    static uint64_t _time;
+    using OutgoingEdges = std::unordered_map<Node, Distance>;
+    using AdjacencyList = std::unordered_map<Node, OutgoingEdges>;
 
 public:
-
-    explicit Node(uint64_t id_osm)
-        : _id_osm(id_osm)
-        , _neighbors(AdjacencyList())
-        , _color(white)
-        , _parent(nullptr)
-        , _d(0)
-        , _f(0) {}
-
-    bool operator<(const Node& other) const {
-        return _id_osm < other._id_osm;
+    void add_edge(Edge&& e, Distance d = 0) {
+        auto[from, to] = e;
+        if (from == to) { return; }
+        data[from].insert({ to, d });
+        data[to].insert({ from, d });
     }
 
-    [[nodiscard]]
-    uint64_t id_osm() const {
-        return _id_osm;
+    auto nodes() {
+        return data;
     }
 
-    [[nodiscard]]
-    const AdjacencyList& neighbors() const {
-        return _neighbors;
-    }
-
-    Color color() const {
-        return _color;
-    }
-
-    friend class Graph;
+private:
+    AdjacencyList data {};
 };
 
-class Graph {
-    std::vector<Node> _nodes;
-public:
-    explicit Graph()
-        : _nodes(std::vector<Node>()) {}
+/**
+ * Factory method for position.
+ */
+auto make_pos(const osmium::NodeRef& node) -> Position;
 
-    explicit Graph(std::vector<Node>&& nodes)
-        : _nodes(nodes) {}
+/**
+ * Constructs routing graph based on provided OSM geodata.
+ *
+ * @param file File with geographic data.
+ * @return Constructed routing graph.
+ */
+auto import(osmium::io::File& file) -> Graph;
 
-    bool add_node(uint64_t id_osm);
+/**
+ * Determines the great-circle distance between two points given their longitudes and latitudes.
+ *
+ * @param x, y OSM nodes with corresponding coordinates.
+ * @return Distance between nodes.
+ */
+auto haversine(const osmium::NodeRef& x, const osmium::NodeRef& y) -> Distance;
 
-    bool add_edge(uint64_t from, uint64_t to);
+/**
+ * Determines the geographical center of a building consisting of ambient nodes.
+ *
+ * @param nodes List of nodes of an OSM way.
+ * @return Geocenter described by a pair of latitude and longitude respectively.
+ */
+auto barycenter(const osmium::WayNodeList& nodes) -> Position;
+} // namespace graph
 
-    [[nodiscard]]
-    const std::vector<Node>& nodes() const {
-        return _nodes;
-    }
-
-    static Graph from_osm(osmium::io::File&);
-
-    void bfs(uint64_t start_id);
-
-    void dfs(uint64_t start_id);
-};
-
-#endif //GRAPHS_GRAPH_HPP
+#endif // GRAPH_HPP

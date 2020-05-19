@@ -1,146 +1,130 @@
-#include <cstdint>
-#include <set>
-#include <osmium/io/pbf_input.hpp>
-#include <osmium/handler.hpp>
-#include <osmium/visitor.hpp>
+#include <functional>
+#include <numeric>
 
 #include "graph.hpp"
 
-uint64_t Node::_time = 0;
+namespace graph {
+auto make_pos(const osmium::NodeRef& node) -> Position {
+    return { node.lat(), node.lon() };
+};
 
-bool Graph::add_node(uint64_t id_osm) {
-    _nodes.emplace_back(id_osm);
-    return true;
+auto haversine(const Position& x, const Position& y) -> Distance {
+    const auto[lat1, lon1] = x;
+    const auto[lat2, lon2] = y;
+
+    constexpr long double R = 6'371'000;
+
+    // Convert to radians
+    const auto phi1 = lat1 * M_PI / 180;
+    const auto phi2 = lat2 * M_PI / 180;
+    const auto d_phi = (lat2 - lat1) * M_PI / 180;
+    const auto d_lambda = (lon2 - lon1) * M_PI / 180;
+
+    // Square of half the chord length between the objects
+    const auto a = std::pow(std::sin(d_phi / 2), 2) +
+                   std::cos(phi1) * std::cos(phi2) * std::pow(std::sin(d_lambda / 2), 2);
+    // Angular distance in radians
+    const auto c = 2 * std::atan2(std::sqrt(a), std::sqrt(1 - a));
+    return R * c;
 }
 
-bool Graph::add_edge(uint64_t from, uint64_t to) {
-    if (from >= _nodes.size() or to >= _nodes.size()) {
-        return false;
-    }
-    for (uint64_t edge: _nodes[from].neighbors()) {
-        if (edge == to) {
-            return false;
-        }
-    }
-    _nodes[from]._neighbors.emplace_back(to);
-    return true;
+auto barycenter(const osmium::WayNodeList& nodes) -> Position {
+    const auto lat = std::accumulate(nodes.cbegin(), nodes.cend(), static_cast<long double>(0),
+                                     [](auto lhs, const auto& node) { return lhs + node.lat(); });
+    const auto lon = std::accumulate(nodes.cbegin(), nodes.cend(), static_cast<long double>(0),
+                                     [](auto lhs, const auto& node) { return lhs + node.lon(); });
+    const auto num = nodes.size();
+
+    return { lat / num, lon / num };
 }
 
-Graph Graph::from_osm(osmium::io::File& input_file) {
+auto import(osmium::io::File& file) -> Graph {
+    using NodesMarker = std::unordered_map<Node, bool>;
+    using Index = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
+    using NearestNode = std::unordered_map<Position, Node, boost::hash<Position>>;
+    using LocationHandler = osmium::handler::NodeLocationsForWays<Index>;
+
     struct CountHandler: public osmium::handler::Handler {
-        // stores count of ways it's used in and index in the vector;
-        std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>>
-            nodes_info = std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>>();
-        // stores nodes
-        std::vector<Node> nodes;
+        NodesMarker marked {};
 
         void way(const osmium::Way& way) noexcept {
-            for (const osmium::NodeRef& nr : way.nodes()) {
-                //if node is already in the nodes list we increment counter and save it
-                //else we add node to the list with a counter equal to one
-                if (nodes_info.contains(nr.positive_ref())) {
-                    std::pair<uint64_t, uint64_t> info = nodes_info.find(nr.positive_ref())->second;
-                    info.first += 1;
-                    nodes_info.insert_or_assign(nr.positive_ref(), info);
+            // Throw away unrelated nodes
+            if (!way.tags().has_key("highway")) { return; }
+
+            for (const auto& node: way.nodes()) {
+                // If the node lies on an intersection, mark it
+                if (marked.find(node.ref()) != marked.end()) {
+                    marked[node.ref()] |= true;
                 } else {
-                    nodes_info.insert({ nr.positive_ref(), { 1, nodes.size() }});
-                    nodes.emplace_back(nr.positive_ref());
+                    marked.insert({ node.ref(), false });
                 }
             }
         }
     };
 
-    struct AddEdgesHandler: public osmium::handler::Handler {
-        std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> nodes_info;
-        Graph& graph;
+    struct FillHandler: public osmium::handler::Handler {
+        NodesMarker marked;
+        Graph routes {};
 
         void way(const osmium::Way& way) noexcept {
-            auto prev = way.nodes().begin();
-            for (const osmium::NodeRef& nr : way.nodes()) {
-                auto info_to = nodes_info.find(nr.positive_ref())->second;
-                if ((info_to.first > 1 and
-                     nr != *way.nodes().begin()) or
-                    nr == *way.nodes().crbegin()) {
-                    auto info_from = nodes_info.find(prev->positive_ref())->second;
-                    uint64_t from = info_from.second;
-                    uint64_t to = info_to.second;
-                    graph.add_edge(from, to);
-                    prev = &nr;
+            if (!way.tags().has_key("highway")) { return; }
+
+            auto first = way.nodes().cbegin();
+            auto last = way.nodes().crbegin();
+            auto pred = first;
+
+            for (const auto& node: way.nodes()) {
+                if (node.ref() != first->ref() && node.ref() != last->ref()) {
+                    if (marked.at(node.ref())) {
+                        // Split up the way
+                        const auto distance = haversine(make_pos(*pred), make_pos(node));
+                        routes.add_edge({ pred->ref(), node.ref() }, distance);
+                        pred = &node;
+                    }
                 }
             }
+
+            const auto distance = haversine(make_pos(*pred), make_pos(*last));
+            routes.add_edge({ pred->ref(), last->ref() }, distance);
         }
     };
 
-    osmium::io::Reader count_reader { input_file };
+    struct GraphHandler: public osmium::handler::Handler {
+        Graph routes;
+        NearestNode nearest {};
+
+        void way(const osmium::Way& way) noexcept {
+            if (!way.tags().has_key("building")) { return; }
+            auto position = barycenter(way.nodes());
+            auto closest = std::min_element(routes.nodes().cbegin(), routes.nodes().cend(),
+                                            [&position](const auto& lhs, const auto& rhs) {
+                                                return haversine(make_pos(lhs.first), position) <
+                                                       haversine(make_pos(rhs.first), position);
+                                            });
+            nearest.insert({ position, closest->first });
+        }
+    };
+
+    auto mode = osmium::osm_entity_bits::node | osmium::osm_entity_bits::way;
+
+    Index index;
+    osmium::io::Reader count_reader { file, mode };
     CountHandler count_handler;
+    LocationHandler location_handler { index };
     osmium::apply(count_reader, count_handler);
+
+    osmium::io::Reader fill_reader { file, mode };
+    FillHandler fill_handler {{}, std::move(count_handler.marked) };
+    osmium::apply(fill_reader, location_handler, fill_handler);
+
+    osmium::io::Reader graph_reader { file, mode };
+    GraphHandler graph_handler {{}, std::move(fill_handler.routes) };
+    osmium::apply(graph_reader, location_handler, graph_handler);
+
     count_reader.close();
+    fill_reader.close();
+    graph_reader.close();
 
-    Graph graph(std::move(count_handler.nodes));
-
-    osmium::io::Reader add_edges_reader { input_file };
-    AddEdgesHandler add_edges_handler {{}, std::move(count_handler.nodes_info), graph };
-    osmium::apply(add_edges_reader, add_edges_handler);
-    add_edges_reader.close();
-
-    return graph;
+    return fill_handler.routes;
 }
-
-void Graph::bfs(uint64_t start_id) {
-    for (auto& node : _nodes) {
-        node._color = Node::Color::white;
-        node._parent = nullptr;
-        node._d = 0;
-    }
-    _nodes[start_id]._color = Node::Color::gray;
-    std::queue<Node*> Q = std::queue<Node*>();
-    Q.push(&_nodes[start_id]);
-
-    while (not Q.empty()) {
-        Node* u = Q.front();
-        Q.pop();
-        for (auto v_id: u->_neighbors) {
-            auto& v = _nodes[v_id];
-            if (v._color == Node::Color::white) {
-                v._color = Node::Color::gray;
-                v._d = u->_d + 1;
-                v._parent = u;
-                Q.push(&v);
-            }
-        }
-        u->_color = Node::Color::black;
-    }
-}
-
-void Graph::dfs(uint64_t start_id) {
-    for (auto& u: _nodes) {
-        u._color = Node::Color::white;
-        u._parent = nullptr;
-    }
-    Node::_time = 0;
-
-    std::stack<uint64_t> S;
-    Node* v_curr = &_nodes[start_id];
-    v_curr->_d = Node::_time;
-    S.push(0);
-
-    while (not S.empty()) {
-        // if not all nodes are visited
-        while (S.top() < v_curr->_neighbors.size()) {
-            auto u = &_nodes[v_curr->_neighbors[S.top()]];
-            if (u->_color != Node::Color::white) {
-                ++S.top();
-                continue;
-            }
-            u->_d = ++Node::_time;
-            u->_color = Node::Color::gray;
-            u->_parent = v_curr;
-            v_curr = u;
-            S.push(0);
-        }
-        v_curr->_color = Node::Color::black;
-        v_curr->_f = ++Node::_time;
-        v_curr = v_curr->_parent;
-        S.pop();
-    }
-}
+} // namespace graph
