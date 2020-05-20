@@ -1,12 +1,9 @@
-#include <functional>
-#include <numeric>
-
 #include "graph.hpp"
 
 namespace graph {
 auto make_pos(const osmium::NodeRef& node) -> Position {
     return { node.lat(), node.lon() };
-};
+}
 
 auto haversine(const Position& x, const Position& y) -> Distance {
     const auto[lat1, lon1] = x;
@@ -38,11 +35,21 @@ auto barycenter(const osmium::WayNodeList& nodes) -> Position {
     return { lat / num, lon / num };
 }
 
-auto import(osmium::io::File& file) -> Graph {
+auto make_building(const osmium::Way& way) -> Building {
+    const auto type = way.tags().get_value_by_key("building");
+    const auto position = barycenter(way.nodes());
+    const std::vector<std::string> houses =
+        { "apartments", "bungalow", "cabin", "detached", "dormitory", "farm", "ger", "hotel",
+          "house", "houseboat", "residential", " semidetached_house", "static_caravan", "terrace" };
+    for (const auto& house: houses) {
+        if (type == house) { return Building { position, 0, Building::Type::House }; }
+    }
+    return Building { position, 0, Building::Type::Facility };
+}
+
+auto import_map(osmium::io::File& file) -> Map {
     using NodesMarker = std::unordered_map<Node, bool>;
-    using Index = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
-    using NearestNode = std::unordered_map<Position, Node, boost::hash<Position>>;
-    using LocationHandler = osmium::handler::NodeLocationsForWays<Index>;
+    using NodesLocation = std::unordered_map<Node, Position>;
 
     struct CountHandler: public osmium::handler::Handler {
         NodesMarker marked {};
@@ -65,6 +72,7 @@ auto import(osmium::io::File& file) -> Graph {
     struct FillHandler: public osmium::handler::Handler {
         NodesMarker marked;
         Graph routes {};
+        NodesLocation locations {};
 
         void way(const osmium::Way& way) noexcept {
             if (!way.tags().has_key("highway")) { return; }
@@ -74,6 +82,7 @@ auto import(osmium::io::File& file) -> Graph {
             auto pred = first;
 
             for (const auto& node: way.nodes()) {
+                locations.insert({ node.ref(), make_pos(node) });
                 if (node.ref() != first->ref() && node.ref() != last->ref()) {
                     if (marked.at(node.ref())) {
                         // Split up the way
@@ -89,42 +98,52 @@ auto import(osmium::io::File& file) -> Graph {
         }
     };
 
+    // TODO: Should handle locations properly, I used hash table to store them for now.
+    // Probably should re-implement Node and define its hash function.
+    // Boost hash is already imported, BTW.
+
     struct GraphHandler: public osmium::handler::Handler {
         Graph routes;
-        NearestNode nearest {};
+        NodesLocation locations;
+        ClosestNode closest {};
 
         void way(const osmium::Way& way) noexcept {
             if (!way.tags().has_key("building")) { return; }
-            auto position = barycenter(way.nodes());
-            auto closest = std::min_element(routes.nodes().cbegin(), routes.nodes().cend(),
-                                            [&position](const auto& lhs, const auto& rhs) {
-                                                return haversine(make_pos(lhs.first), position) <
-                                                       haversine(make_pos(rhs.first), position);
-                                            });
-            nearest.insert({ position, closest->first });
+
+            auto building = make_building(way);
+            // Get reference to the closest node
+            auto node = std::min_element(routes.nodes().cbegin(), routes.nodes().cend(),
+                                         [&](const auto& lhs, const auto& rhs) {
+                                             return
+                                                 haversine(locations[lhs.first], building.position)
+                                                 <
+                                                 haversine(locations[rhs.first], building.position);
+                                         })->first;
+            closest.emplace_back(building, node);
         }
     };
 
-    auto mode = osmium::osm_entity_bits::node | osmium::osm_entity_bits::way;
+    using Index = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
+    using LocationHandler = osmium::handler::NodeLocationsForWays<Index>;
 
     Index index;
-    osmium::io::Reader count_reader { file, mode };
-    CountHandler count_handler;
-    LocationHandler location_handler { index };
-    osmium::apply(count_reader, count_handler);
+    osmium::io::Reader cr { file }, fr { file }, gr { file };
 
-    osmium::io::Reader fill_reader { file, mode };
-    FillHandler fill_handler {{}, std::move(count_handler.marked) };
-    osmium::apply(fill_reader, location_handler, fill_handler);
+    CountHandler ch;
+    osmium::apply(cr, ch);
 
-    osmium::io::Reader graph_reader { file, mode };
-    GraphHandler graph_handler {{}, std::move(fill_handler.routes) };
-    osmium::apply(graph_reader, location_handler, graph_handler);
+    FillHandler fh {{}, std::move(ch.marked) };
+    LocationHandler lhf { index };
+    osmium::apply(fr, lhf, fh);
 
-    count_reader.close();
-    fill_reader.close();
-    graph_reader.close();
+    GraphHandler gh {{}, std::move(fh.routes), std::move(fh.locations) };
+    LocationHandler lhg { index };
+    osmium::apply(gr, lhg, gh);
 
-    return fill_handler.routes;
+    cr.close();
+    fr.close();
+    gr.close();
+
+    return Map { gh.closest, gh.routes };
 }
 } // namespace graph
