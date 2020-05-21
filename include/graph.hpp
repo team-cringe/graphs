@@ -95,8 +95,6 @@ public:
     auto nodes() const { return data; }
 
 private:
-    size_t byte_size() const;
-
     AdjacencyList data {};
 };
 

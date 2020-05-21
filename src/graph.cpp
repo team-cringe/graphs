@@ -11,7 +11,6 @@
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
-#include <boost/iostreams/device/array.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/serialization/unordered_map.hpp>
 
@@ -24,37 +23,23 @@
 
 namespace graph {
 template<typename T>
-bool serialize(const std::string& filename, T&& data, size_t bytes) {
-    char* buffer = new char[bytes];
-
-    boost::iostreams::stream<boost::iostreams::array_sink> os(buffer, bytes);
-    boost::archive::binary_oarchive archive(os);
+bool serialize(const std::string& filename, T&& data) {
+    std::ofstream binary { filename, std::ios::out | std::ios::binary | std::ios::app };
+    boost::archive::binary_oarchive archive { binary, boost::archive::no_header };
     archive << data;
-
-    std::ofstream binary;
-    binary.open(filename, std::ios::out | std::ios::binary | std::ios::app);
-    binary.write(buffer, bytes);
     binary.close();
-
-    delete[] buffer;
 
     return true;
 }
 
 template<typename T>
-bool deserialize(const std::string& filename, T&& data, size_t bytes) {
+bool deserialize(const std::string& filename, T&& data) {
     if (!std::filesystem::exists(filename)) { return false; }
 
-    std::ifstream binary(filename, std::ios::binary | std::ios::ate);
-    char* buffer = new char[bytes];
-    binary.seekg(0, std::ios::beg);
-    binary.read(buffer, bytes);
-
-    boost::iostreams::stream<boost::iostreams::array_source> is(buffer, bytes);
-    boost::archive::binary_iarchive archive(is);
+    std::ifstream binary { filename, std::ios::binary };
+    boost::archive::binary_iarchive archive { binary, boost::archive::no_header };
     archive >> data;
-
-    delete[] buffer;
+    binary.close();
 
     return true;
 }
@@ -69,18 +54,12 @@ bool Graph::add_edge(Edge&& e, Distance d) noexcept {
 };
 
 bool Graph::serialize(const std::string& filename) const {
-    return ::graph::serialize(filename, data, byte_size());
+    return ::graph::serialize(filename, data);
 }
 
 bool Graph::deserialize(const std::string& filename) {
     if (!std::filesystem::exists(filename)) { return false; }
-    return ::graph::deserialize(filename, data, std::filesystem::file_size(filename));
-}
-
-size_t Graph::byte_size() const {
-    size_t outer = data.size(), inner = 0;
-    for (const auto&[node, edges]: data) { inner += edges.size(); }
-    return sizeof(data) * outer * (sizeof(Node) + inner * (sizeof(Node) + sizeof(Distance)));
+    return ::graph::deserialize(filename, data);
 }
 
 /*
@@ -121,13 +100,12 @@ auto Map::select_random_houses(size_t num) const -> ClosestNode {
 };
 
 bool Map::serialize(const std::string& filename) {
-    size_t bytes = sizeof(closest) * closest.size() * (sizeof(Building) + sizeof(Node));
-    return ::graph::serialize(filename, closest, bytes) && graph.serialize("graph.bin");
+    return ::graph::serialize(filename, closest) && graph.serialize("graph.bin");
 };
 
 bool Map::deserialize(const std::string& filename) {
     if (!std::filesystem::exists(filename)) { return false; }
-    return ::graph::deserialize(filename, closest, std::filesystem::file_size(filename)) &&
+    return ::graph::deserialize(filename, closest) &&
            graph.deserialize("graph.bin");
 };
 
@@ -271,7 +249,7 @@ auto import_map(const std::string& filename) -> Map {
     {
         Graph routes {};
         Map map {};
-        if (map.deserialize("map.bin")) {
+        if (map.deserialize()) {
             return map;
         }
     }
@@ -297,7 +275,7 @@ auto import_map(const std::string& filename) -> Map {
 
     // Create map and serialize
     Map map { gh.closest, gh.routes };
-    map.serialize("map.bin");
+    map.serialize();
 
     return map;
 }
