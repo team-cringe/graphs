@@ -1,17 +1,15 @@
 #include "graph.hpp"
 
-#include <iostream>
+using namespace graph;
 
 namespace assessment {
 void nearest(int nodes, int objects) {
-    (void)nodes;
-
-    osmium::io::File file { "VNMap.pbf" };
-    auto map = graph::import_map(file);
-
+    auto map = graph::import_map("NNMap.pbf");
+    auto houses = map.select_random_houses(nodes);
     auto facilities = map.select_random_facilities(objects);
-    for (const auto& f: facilities) {
-        std::cout << f.second << std::endl;
+
+    for (const auto&[house, _]: houses) {
+        auto result = map.shortest_paths(house, facilities);
     }
 }
 } // namespace assessment

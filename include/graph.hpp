@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include <queue>
 
 #include <boost/functional/hash.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -20,7 +21,9 @@ using Edge = std::pair<Node, Node>;
 struct Building {
     Building() = default;
 
-    Building(Position p, Distance w, unsigned char t): p(std::move(p)), w(w) {
+    Building(Position p, Distance w, unsigned char t)
+        : p(std::move(p))
+        , w(w) {
         if (t == 0) { type = Type::House; }
         else { type = Type::Facility; }
     }
@@ -32,7 +35,7 @@ struct Building {
     friend class boost::serialization::access;
     template<typename Archive>
     void serialize(Archive& archive, const unsigned int& version) {
-        (void)version;
+        (void) version;
         archive & p;
         archive & w;
         archive & type;
@@ -56,6 +59,9 @@ private:
     Distance w = 0;
     Type type = Type::House;
 };
+
+using Nodes = std::vector<Node>;
+using Buildings = std::vector<Building>;
 } // namespace graph
 
 namespace std {
@@ -76,9 +82,14 @@ struct hash<graph::Building> {
 
 namespace graph {
 /**
- * Type for mapping building to the closest route node.
+ * Type for mapping Building to the closest route Node.
  */
 using ClosestNode = std::unordered_map<Building, Node>;
+
+/**
+ * Type for representing shortest paths from one Node to others.
+ */
+using ShortestPaths = std::unordered_map<Node, Distance>;
 
 /**
  * Undirected weighted routing graph implemented as an adjacency list.
@@ -90,9 +101,13 @@ private:
 
 public:
     bool add_edge(Edge&& e, Distance d = 0) noexcept;
+
     bool serialize(const std::string& filename = "graph.bin") const;
     bool deserialize(const std::string& filename = "graph.bin");
+
     auto nodes() const { return data; }
+
+    auto dijkstra(Node s) const -> ShortestPaths;
 
 private:
     AdjacencyList data {};
@@ -112,7 +127,7 @@ struct Map {
     Map() = default;
 
     Map(ClosestNode c, Graph g)
-        : closest(std::move(c))
+        : building_to_node(std::move(c))
         , graph(std::move(g)) {};
 
     /**
@@ -136,14 +151,21 @@ struct Map {
     auto select_random_facilities(size_t num) const -> ClosestNode;
     auto select_random_houses(size_t num) const -> ClosestNode;
 
+    /**
+     * Get shortest paths from Node to all other Nodes specified.
+     *
+     * @return Mapping from Nodes to the corresponding paths from the given Node.
+     */
+    auto shortest_paths(const Building& from, const ClosestNode& to) const -> ShortestPaths;
+
     bool serialize(const std::string& filename = "map.bin");
     bool deserialize(const std::string& filename = "map.bin");
 
-    auto buildings() const { return closest; }
+    auto buildings() const { return building_to_node; }
     auto nodes() const { return graph.nodes(); }
 
 private:
-    ClosestNode closest {};
+    ClosestNode building_to_node {};
     Graph graph {};
 };
 
