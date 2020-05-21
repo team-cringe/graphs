@@ -1,25 +1,13 @@
 #ifndef GRAPH_HPP
 #define GRAPH_HPP
 
-#include <cmath>
-#include <unordered_map>
-#include <functional>
-#include <numeric>
 #include <utility>
 #include <vector>
-#include <random>
-#include <iostream>
+#include <memory>
 
 #include <boost/functional/hash.hpp>
-
-#include <osmium/osm/types.hpp>
-#include <osmium/index/map/flex_mem.hpp>
-#include <osmium/handler/node_locations_for_ways.hpp>
-#include <osmium/io/pbf_input.hpp>
-#include <osmium/handler.hpp>
-#include <osmium/visitor.hpp>
-
-// TODO: This is totally disgusting. Sorry.
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 
 namespace graph {
 using Distance = double;
@@ -30,24 +18,66 @@ using Node = std::uint64_t;
 using Edge = std::pair<Node, Node>;
 
 struct Building {
+    Building() = default;
+
+    Building(Position p, Distance w, unsigned char t): p(std::move(p)), w(w) {
+        if (t == 0) { type = Type::House; }
+        else { type = Type::Facility; }
+    }
+
+    bool operator==(const Building& other) const {
+        return type == other.type && p == other.p && w == other.w;
+    }
+
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& archive, const unsigned int& version) {
+        archive & p;
+        archive & w;
+        archive & type;
+    }
+
+    [[nodiscard]] bool is_house() const { return type == Type::House; }
+    [[nodiscard]] bool is_facility() const { return type == Type::Facility; }
+
+    [[nodiscard]] Position pos() const { return p; }
+    [[nodiscard]] auto x() const { return p.first; }
+    [[nodiscard]] auto y() const { return p.second; }
+    [[nodiscard]] auto weight() const { return w; }
+
+private:
     enum class Type {
         House,
         Facility
     };
 
-    bool is_house() const { return type == Type::House; }
-
-    bool is_facility() const { return type == Type::Facility; }
-
-    Position position = { 0, 0};
-    Distance distance = 0;
-    Type type;
+    Position p = { 0, 0 };
+    Distance w = 0;
+    Type type = Type::House;
 };
+} // namespace graph
 
+namespace std {
+template<>
+struct hash<graph::Building> {
+    size_t operator()(const graph::Building& b) const {
+        using boost::hash_value;
+        using boost::hash_combine;
+
+        size_t seed = 0;
+        hash_combine(seed, hash_value(b.x()));
+        hash_combine(seed, hash_value(b.y()));
+        hash_combine(seed, hash_value(b.weight()));
+        return seed;
+    }
+};
+} // namespace std
+
+namespace graph {
 /**
  * Type for mapping building to the closest route node.
  */
-using ClosestNode = std::vector<std::pair<Building, Node>>;
+using ClosestNode = std::unordered_map<Building, Node>;
 
 /**
  * Undirected weighted routing graph implemented as an adjacency list.
@@ -58,21 +88,30 @@ private:
     using AdjacencyList = std::unordered_map<Node, OutgoingEdges>;
 
 public:
-    bool add_edge(Edge&& e, Distance d = 0) noexcept {
-        auto[from, to] = e;
-        if (from == to) { return false; }
-        return data[from].insert({ to, d }).second && data[to].insert({ from, d }).second;
-    }
-
-    auto nodes() const {
-        return data;
-    }
+    bool add_edge(Edge&& e, Distance d = 0) noexcept;
+    bool serialize(const std::string& filename = "graph.bin") const;
+    bool deserialize(const std::string& filename = "graph.bin");
+    auto nodes() const { return data; }
 
 private:
+    size_t byte_size() const;
+
     AdjacencyList data {};
 };
 
+/**
+ * Data structure envision:
+ *
+ *             Building    Node    (references)    Node maps Distance
+ * ClosestNode a        -> x    -> UWGraph      -> [(x1 -> w), (x2 -> w), (x3 -> w)]
+ * ClosestNode b        -> y    -> UWGraph      -> [(y1 -> w)]
+ * ClosestNode c        -> z    -> UWGraph      -> [(z1 -> w), (z2 -> w)]
+ *
+ * where {a, b, c} -- Buildings, {x, y, z} -- Nodes, w -- Distances.
+ */
 struct Map {
+    Map() = default;
+
     Map(ClosestNode c, Graph g)
         : closest(std::move(c))
         , graph(std::move(g)) {};
@@ -84,13 +123,7 @@ struct Map {
      * @return Vector of corresponding nodes.
      */
     template<typename F>
-    auto select_buildings(F functor) -> std::vector<Node> {
-        std::vector<Node> result {};
-        for (const auto&[building, node]: closest) {
-            if (functor(building)) { result.push_back(node); }
-        }
-        return result;
-    };
+    auto select_buildings(F&& functor) const -> std::vector<Node>;
 
     /**
      * Select N buildings and apply functor to each.
@@ -100,72 +133,28 @@ struct Map {
      * @return Vector of corresponding nodes.
      */
     template<typename F>
-    auto select_random_buildings(std::size_t num, F&& functor) -> ClosestNode {
-        ClosestNode buildings {}, result {};
-        std::copy_if(closest.cbegin(), closest.cend(), std::back_inserter(buildings),
-                     std::forward<F>(functor));
-        std::sample(buildings.cbegin(), buildings.cend(), std::back_inserter(result), num,
-                    std::mt19937 { std::random_device {}() });
-        return result;
-    }
+    auto select_random_buildings(size_t num, F&& functor) const -> ClosestNode;
+    auto select_random_facilities(size_t num) const -> ClosestNode;
+    auto select_random_houses(size_t num) const -> ClosestNode;
 
-    auto select_random_facilities(std::size_t num) -> ClosestNode {
-        return select_random_buildings(num, [](const auto& p) {
-            const auto[building, _] = p;
-            return building.is_facility();
-        });
-    };
+    bool serialize(const std::string& filename = "map.bin");
+    bool deserialize(const std::string& filename = "map.bin");
 
-    auto select_random_houses(std::size_t num) -> ClosestNode {
-        return select_random_buildings(num, [](const auto& p) {
-            const auto[building, _] = p;
-            return building.is_house();
-        });
-    };
-
-    auto buildings() {
-        return closest;
-    }
-
-    auto routes() {
-        return graph;
-    }
+    auto buildings() const { return closest; }
+    auto nodes() const { return graph.nodes(); }
 
 private:
-    ClosestNode closest;
-    Graph graph;
+    ClosestNode closest {};
+    Graph graph {};
 };
 
 /**
- * Factory method for Position.
- */
-auto make_pos(const osmium::NodeRef& node) -> Position;
-
-/**
- * Factory method for Building.
- * Calculates its position and resolves correct type based on OSM data.
- *
- * @details Use RTTI in order to define correct type in hierarchy.
- *
- * @param way OSM way that represents building (or you gonna catch runtime error, lol).
- */
-auto make_building(const osmium::Way& way) -> Building;
-
-/**
  * Constructs routing graph based on provided OSM geodata.
- * Resulting data is envisioned bellow:
- *
- *             Building    Node    (references)    Node maps Distance
- * ClosestNode a        -> x    -> UWGraph      -> [(x1 -> w), (x2 -> w), (x3 -> w)]
- * ClosestNode b        -> y    -> UWGraph      -> [(y1 -> w)]
- * ClosestNode c        -> z    -> UWGraph      -> [(z1 -> w), (z2 -> w)]
- *
- * where {a, b, c} -- Buildings, {x, y, z} -- Nodes, w -- Distances.
  *
  * @param file File with geographic data.
  * @return Constructed routing graph and the list of buildings.
  */
-auto import_map(osmium::io::File& file) -> Map;
+auto import_map(const std::string& filename) -> Map;
 
 /**
  * Determines the great-circle distance between two points given their longitudes and latitudes.
@@ -174,14 +163,6 @@ auto import_map(osmium::io::File& file) -> Map;
  * @return Distance between nodes.
  */
 auto haversine(const Position& x, const Position& y) -> Distance;
-
-/**
- * Determines the geographical center of a building consisting of ambient nodes.
- *
- * @param nodes List of nodes of an OSM way.
- * @return Geocenter described by a pair of latitude and longitude respectively.
- */
-auto barycenter(const osmium::WayNodeList& nodes) -> Position;
 } // namespace graph
 
 #endif // GRAPH_HPP

@@ -1,6 +1,159 @@
 #include "graph.hpp"
 
+#include <cmath>
+#include <unordered_map>
+#include <functional>
+#include <numeric>
+#include <random>
+#include <fstream>
+#include <iostream>
+#include <filesystem>
+
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/iostreams/device/array.hpp>
+#include <boost/iostreams/stream.hpp>
+#include <boost/serialization/unordered_map.hpp>
+
+#include <osmium/osm/types.hpp>
+#include <osmium/handler.hpp>
+#include <osmium/visitor.hpp>
+#include <osmium/index/map/flex_mem.hpp>
+#include <osmium/handler/node_locations_for_ways.hpp>
+#include <osmium/io/pbf_input.hpp>
+
 namespace graph {
+template<typename T>
+bool serialize(const std::string& filename, T&& data, size_t bytes) {
+    char* buffer = new char[bytes];
+
+    boost::iostreams::stream<boost::iostreams::array_sink> os(buffer, bytes);
+    boost::archive::binary_oarchive archive(os);
+    archive << data;
+
+    std::ofstream binary;
+    binary.open(filename, std::ios::out | std::ios::binary | std::ios::app);
+    binary.write(buffer, bytes);
+    binary.close();
+
+    delete[] buffer;
+
+    return true;
+}
+
+template<typename T>
+bool deserialize(const std::string& filename, T&& data, size_t bytes) {
+    if (!std::filesystem::exists(filename)) { return false; }
+
+    std::ifstream binary(filename, std::ios::binary | std::ios::ate);
+    char* buffer = new char[bytes];
+    binary.seekg(0, std::ios::beg);
+    binary.read(buffer, bytes);
+
+    boost::iostreams::stream<boost::iostreams::array_source> is(buffer, bytes);
+    boost::archive::binary_iarchive archive(is);
+    archive >> data;
+
+    delete[] buffer;
+
+    return true;
+}
+
+/*
+ * Graph structure declaration.
+ */
+bool Graph::add_edge(Edge&& e, Distance d) noexcept {
+    auto[from, to] = e;
+    if (from == to) { return false; }
+    return data[from].insert({ to, d }).second && data[to].insert({ from, d }).second;
+};
+
+bool Graph::serialize(const std::string& filename) const {
+    try {
+        return ::graph::serialize(filename, data, byte_size());
+    }
+    catch (std::exception& e) {
+        std::cout << e.what() << std::endl;
+    }
+}
+
+bool Graph::deserialize(const std::string& filename) {
+    if (!std::filesystem::exists(filename)) { return false; }
+    try {
+        return ::graph::deserialize(filename, data, std::filesystem::file_size(filename));
+    }
+    catch (std::exception& e) {
+        std::cout << e.what() << std::endl;
+    }
+}
+
+size_t Graph::byte_size() const {
+    size_t outer = data.size(), inner = 0;
+    for (const auto&[node, edges]: data) { inner += edges.size(); }
+    return sizeof(data) * outer * (sizeof(Node) + inner * (sizeof(Node) + sizeof(Distance)));
+}
+
+/*
+ * Map structure declaration.
+ */
+template<typename F>
+auto Map::select_buildings(F&& functor) const -> std::vector<Node> {
+    std::vector<Node> result {};
+    for (const auto&[building, node]: closest) {
+        if (functor(building)) { result.push_back(node); }
+    }
+    return result;
+};
+
+template<typename F>
+auto Map::select_random_buildings(size_t num, F&& functor) const -> ClosestNode {
+    ClosestNode buildings {}, result {};
+    std::copy_if(closest.cbegin(), closest.cend(), std::inserter(buildings, buildings.end()),
+                 std::forward<F>(functor));
+    if (buildings.empty()) { return buildings; }
+    std::sample(buildings.cbegin(), buildings.cend(), std::inserter(result, result.end()), num,
+                std::mt19937 { std::random_device {}() });
+    return result;
+}
+
+auto Map::select_random_facilities(size_t num) const -> ClosestNode {
+    return select_random_buildings(num, [](const auto& p) {
+        const auto[building, _] = p;
+        return building.is_facility();
+    });
+};
+
+auto Map::select_random_houses(size_t num) const -> ClosestNode {
+    return select_random_buildings(num, [](const auto& p) {
+        const auto[building, _] = p;
+        return building.is_house();
+    });
+};
+
+bool Map::serialize(const std::string& filename) {
+    size_t bytes = sizeof(closest) * closest.size() * (sizeof(Building) + sizeof(Node));
+    try {
+        return ::graph::serialize(filename, closest, bytes) && graph.serialize("graph.bin");
+    }
+    catch (std::exception& e) {
+        std::cout << e.what() << std::endl;
+    }
+};
+
+bool Map::deserialize(const std::string& filename) {
+    if (!std::filesystem::exists(filename)) { return false; }
+    try {
+        return ::graph::deserialize(filename, closest, std::filesystem::file_size(filename)) &&
+               graph.deserialize("graph.bin");
+    }
+    catch (std::exception& e) {
+        std::cout << e.what() << std::endl;
+    }
+};
+
+/**
+ * Factory method for Position.
+ */
 auto make_pos(const osmium::NodeRef& node) -> Position {
     return { node.lat(), node.lon() };
 }
@@ -8,7 +161,6 @@ auto make_pos(const osmium::NodeRef& node) -> Position {
 auto haversine(const Position& x, const Position& y) -> Distance {
     const auto[lat1, lon1] = x;
     const auto[lat2, lon2] = y;
-
     constexpr long double R = 6'371'000;
 
     // Convert to radians
@@ -25,6 +177,12 @@ auto haversine(const Position& x, const Position& y) -> Distance {
     return R * c;
 }
 
+/**
+ * Determines the geographical center of a building consisting of ambient nodes.
+ *
+ * @param nodes List of nodes of an OSM way.
+ * @return Geocenter described by a pair of latitude and longitude respectively.
+ */
 auto barycenter(const osmium::WayNodeList& nodes) -> Position {
     const auto lat = std::accumulate(nodes.cbegin(), nodes.cend(), static_cast<long double>(0),
                                      [](auto lhs, const auto& node) { return lhs + node.lat(); });
@@ -35,6 +193,14 @@ auto barycenter(const osmium::WayNodeList& nodes) -> Position {
     return { lat / num, lon / num };
 }
 
+/**
+ * Factory method for Building.
+ * Calculates its position and resolves correct type based on OSM data.
+ *
+ * @details Use RTTI in order to define correct type in hierarchy.
+ *
+ * @param way OSM way that represents building (or you gonna catch runtime error, lol).
+ */
 auto make_building(const osmium::Way& way) -> Building {
     const auto type = way.tags().get_value_by_key("building");
     const auto position = barycenter(way.nodes());
@@ -42,12 +208,12 @@ auto make_building(const osmium::Way& way) -> Building {
         { "apartments", "bungalow", "cabin", "detached", "dormitory", "farm", "ger", "hotel",
           "house", "houseboat", "residential", " semidetached_house", "static_caravan", "terrace" };
     for (const auto& house: houses) {
-        if (type == house) { return Building { position, 0, Building::Type::House }; }
+        if (type == house) { return Building { position, 0, 0 }; }
     }
-    return Building { position, 0, Building::Type::Facility };
+    return Building { position, 0, 1 };
 }
 
-auto import_map(osmium::io::File& file) -> Map {
+auto import_map(const std::string& filename) -> Map {
     using NodesMarker = std::unordered_map<Node, bool>;
     using NodesLocation = std::unordered_map<Node, Position>;
 
@@ -69,7 +235,7 @@ auto import_map(osmium::io::File& file) -> Map {
         }
     };
 
-    struct FillHandler: public osmium::handler::Handler {
+    struct GraphHandler: public osmium::handler::Handler {
         NodesMarker marked;
         Graph routes {};
         NodesLocation locations {};
@@ -98,11 +264,7 @@ auto import_map(osmium::io::File& file) -> Map {
         }
     };
 
-    // TODO: Should handle locations properly, I used hash table to store them for now.
-    // Probably should re-implement Node and define its hash function.
-    // Boost hash is already imported, BTW.
-
-    struct GraphHandler: public osmium::handler::Handler {
+    struct MapHandler: public osmium::handler::Handler {
         Graph routes;
         NodesLocation locations;
         ClosestNode closest {};
@@ -115,28 +277,37 @@ auto import_map(osmium::io::File& file) -> Map {
             auto node = std::min_element(routes.nodes().cbegin(), routes.nodes().cend(),
                                          [&](const auto& lhs, const auto& rhs) {
                                              return
-                                                 haversine(locations[lhs.first], building.position)
-                                                 <
-                                                 haversine(locations[rhs.first], building.position);
+                                                 haversine(locations[lhs.first], building.pos()) <
+                                                 haversine(locations[rhs.first], building.pos());
                                          })->first;
-            closest.emplace_back(building, node);
+            closest.insert({ building, node });
         }
     };
 
     using Index = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
     using LocationHandler = osmium::handler::NodeLocationsForWays<Index>;
 
+    // If map is already cached, return
+    {
+        Graph routes {};
+        Map map {};
+        if (map.deserialize("map.bin")) {
+            return map;
+        }
+    }
+
+    osmium::io::File file { filename };
     Index index;
     osmium::io::Reader cr { file }, fr { file }, gr { file };
 
     CountHandler ch;
     osmium::apply(cr, ch);
 
-    FillHandler fh {{}, std::move(ch.marked) };
+    GraphHandler fh {{}, std::move(ch.marked) };
     LocationHandler lhf { index };
     osmium::apply(fr, lhf, fh);
 
-    GraphHandler gh {{}, std::move(fh.routes), std::move(fh.locations) };
+    MapHandler gh {{}, std::move(fh.routes), std::move(fh.locations) };
     LocationHandler lhg { index };
     osmium::apply(gr, lhg, gh);
 
@@ -144,6 +315,10 @@ auto import_map(osmium::io::File& file) -> Map {
     fr.close();
     gr.close();
 
-    return Map { gh.closest, gh.routes };
+    // Create map and serialize
+    Map map { gh.closest, gh.routes };
+    map.serialize("map.bin");
+
+    return map;
 }
 } // namespace graph
