@@ -26,6 +26,7 @@ set_property(TARGET graphs PROPERTY CXX_STANDARD 17)
 find_package(Osmium REQUIRED COMPONENTS pbf)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
+find_package(Boost REQUIRED serialization)
 
 # Move necessary data files to build directory
 configure_file(data/NNMap.pbf ${CMAKE_CURRENT_BINARY_DIR}/NNMap.pbf COPYONLY)
@@ -40,4 +41,5 @@ endif()
 
 target_link_libraries(graphs PUBLIC ${OSMIUM_IO_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${CMAKE_THREAD_LIBS_INIT})
+        ${CMAKE_THREAD_LIBS_INIT}
+        ${Boost_LIBRARIES})

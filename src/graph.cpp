@@ -69,22 +69,12 @@ bool Graph::add_edge(Edge&& e, Distance d) noexcept {
 };
 
 bool Graph::serialize(const std::string& filename) const {
-    try {
-        return ::graph::serialize(filename, data, byte_size());
-    }
-    catch (std::exception& e) {
-        std::cout << e.what() << std::endl;
-    }
+    return ::graph::serialize(filename, data, byte_size());
 }
 
 bool Graph::deserialize(const std::string& filename) {
     if (!std::filesystem::exists(filename)) { return false; }
-    try {
-        return ::graph::deserialize(filename, data, std::filesystem::file_size(filename));
-    }
-    catch (std::exception& e) {
-        std::cout << e.what() << std::endl;
-    }
+    return ::graph::deserialize(filename, data, std::filesystem::file_size(filename));
 }
 
 size_t Graph::byte_size() const {
@@ -132,23 +122,13 @@ auto Map::select_random_houses(size_t num) const -> ClosestNode {
 
 bool Map::serialize(const std::string& filename) {
     size_t bytes = sizeof(closest) * closest.size() * (sizeof(Building) + sizeof(Node));
-    try {
-        return ::graph::serialize(filename, closest, bytes) && graph.serialize("graph.bin");
-    }
-    catch (std::exception& e) {
-        std::cout << e.what() << std::endl;
-    }
+    return ::graph::serialize(filename, closest, bytes) && graph.serialize("graph.bin");
 };
 
 bool Map::deserialize(const std::string& filename) {
     if (!std::filesystem::exists(filename)) { return false; }
-    try {
-        return ::graph::deserialize(filename, closest, std::filesystem::file_size(filename)) &&
-               graph.deserialize("graph.bin");
-    }
-    catch (std::exception& e) {
-        std::cout << e.what() << std::endl;
-    }
+    return ::graph::deserialize(filename, closest, std::filesystem::file_size(filename)) &&
+           graph.deserialize("graph.bin");
 };
 
 /**

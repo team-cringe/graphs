@@ -32,6 +32,7 @@ struct Building {
     friend class boost::serialization::access;
     template<typename Archive>
     void serialize(Archive& archive, const unsigned int& version) {
+        (void)version;
         archive & p;
         archive & w;
         archive & type;
