@@ -231,7 +231,7 @@ auto make_building(const osmium::Way& way) -> Building {
 }
 
 auto import_map(const std::string& filename) -> Map {
-    using NodesMarker = std::unordered_map<Node, bool>;
+    using NodesMarker = std::unordered_map<std::uint64_t, bool>;
     using NodesLocation = std::unordered_map<Node, Position>;
 
     struct CountHandler: public osmium::handler::Handler {
@@ -266,26 +266,30 @@ auto import_map(const std::string& filename) -> Map {
             auto pred = first;
 
             for (const auto& node: way.nodes()) {
-                locations.insert({ node.ref(), make_pos(node) });
+                Node current { node.positive_ref(), node.lon(), node.lat() };
+                locations.insert({ current, make_pos(node) });
                 if (node.ref() != first->ref() && node.ref() != last->ref()) {
                     if (marked.at(node.ref())) {
                         // Split up the way
                         const auto distance = haversine(make_pos(*pred), make_pos(node));
+                        Node previous { pred->positive_ref(), pred->lon(), pred->lat() };
                         if (one_way) {
-                            routes.add_edge_one_way({ pred->ref(), node.ref() }, distance);
+                            routes.add_edge_one_way({ previous, current }, distance);
                         } else {
-                            routes.add_edge_two_way({ pred->ref(), node.ref() }, distance);
+                            routes.add_edge_two_way({ previous, current }, distance);
                         }
                         pred = &node;
                     }
                 }
             }
 
+            Node previous { pred->positive_ref(), pred->lon(), pred->lat() };
+            Node end { last->positive_ref(), last->lon(), last->lat() };
             const auto distance = haversine(make_pos(*pred), make_pos(*last));
             if (one_way) {
-                routes.add_edge_one_way({ pred->ref(), last->ref() }, distance);
+                routes.add_edge_one_way({ previous, end }, distance);
             } else {
-                routes.add_edge_two_way({ pred->ref(), last->ref() }, distance);
+                routes.add_edge_two_way({ previous, end }, distance);
             }
         }
     };

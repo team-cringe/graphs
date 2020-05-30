@@ -15,7 +15,47 @@ using Distance = double;
 using Angle = long double;
 using Position = std::pair<Angle, Angle>;
 
-using Node = std::uint64_t;
+struct Node {
+    explicit Node() = default;
+
+    explicit Node(std::uint64_t id)
+        : m_id(id) {};
+
+    Node(std::uint64_t id, Angle longitude, Angle latitude)
+        : m_id(id)
+        , m_longitude(longitude)
+        , m_latitude(latitude) {};
+
+    Node(std::uint64_t id, std::pair<Angle, Angle> location)
+        : m_id(id)
+        , m_longitude(location.first)
+        , m_latitude(location.second) {};
+
+    [[nodiscard]] std::uint64_t id() const { return m_id; }
+    [[nodiscard]] Angle longitude() const { return m_longitude; }
+    [[nodiscard]] Angle latitude() const { return m_latitude; }
+    [[nodiscard]] auto location() const -> std::pair<Angle, Angle> {
+        return { m_longitude, m_latitude };
+    }
+
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& archive, const unsigned int& version) {
+        (void) version;
+        archive & m_id;
+        archive & m_longitude;
+        archive & m_latitude;
+    }
+
+    bool operator==(const Node& other) const { return other.m_id == m_id; }
+    bool operator!=(const Node& other) const { return !(other == *this); }
+    bool operator<(const Node& other) const { return m_id < other.m_id; }
+
+private:
+    std::uint64_t m_id = 0;
+    Angle m_longitude = 0, m_latitude = 0;
+};
+
 using Edge = std::pair<Node, Node>;
 
 struct Building {
@@ -29,7 +69,8 @@ struct Building {
     }
 
     bool operator==(const Building& other) const {
-        return m_type == other.m_type && m_position == other.m_position && m_weight == other.m_weight;
+        return m_type == other.m_type && m_position == other.m_position &&
+               m_weight == other.m_weight;
     }
 
     friend class boost::serialization::access;
@@ -75,6 +116,20 @@ struct hash<graph::Building> {
         hash_combine(seed, hash_value(b.x()));
         hash_combine(seed, hash_value(b.y()));
         hash_combine(seed, hash_value(b.weight()));
+        return seed;
+    }
+};
+
+template<>
+struct hash<graph::Node> {
+    size_t operator()(const graph::Node& n) const {
+        using boost::hash_value;
+        using boost::hash_combine;
+
+        size_t seed = 0;
+        hash_combine(seed, hash_value(n.id()));
+        hash_combine(seed, hash_value(n.longitude()));
+        hash_combine(seed, hash_value(n.latitude()));
         return seed;
     }
 };
@@ -139,7 +194,7 @@ struct Map {
             , m_path(std::move(path))
             , m_distance(distance) {};
 
-        [[nodiscard]] auto destinations() const -> std::pair<Building, Building> {
+        [[nodiscard]] auto ends() const -> std::pair<Building, Building> {
             return { m_from, m_to };
         }
         [[nodiscard]] const Nodes& path() const { return m_path; }
