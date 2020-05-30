@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <limits>
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
@@ -63,28 +64,24 @@ bool Graph::deserialize(const std::string& filename) {
 }
 
 auto Graph::dijkstra(Node s) const -> ShortestPaths {
-    constexpr long INF = 1'000'000;
+    constexpr auto INF = std::numeric_limits<double>::max();
 
     std::unordered_map<Node, Distance> distances;
-    std::unordered_map<Node, bool> used;
+    std::set<std::pair<Distance, Node>> set;
 
-    for (const auto&[node, _]: nodes()) {
-        distances[node] = INF;
-        used[node] = false;
-    }
+    for (const auto&[node, _]: nodes()) { distances[node] = INF; }
 
     distances[s] = 0;
-    for (const auto& _: nodes()) { (void)_;
-        Node v = 0;
-        for (const auto&[u, _]: nodes()) {
-            if (!used[u] && (v == 0 || distances[u] < distances[v])) { v = u; }
-        }
-        if (distances[v] == INF) { break; }
-        used[v] = true;
-        auto edges = nodes()[v];
-        for (const auto&[u, distance]: edges) {
-            if ((distances[v] + distance) < distances[u]) {
-                distances[u] = distances[v] + distance;
+    set.insert({ distances[s], s });
+    while (!set.empty()) {
+        auto[_, v] = *set.begin();
+        set.erase(set.begin());
+        for (const auto& u: nodes().at(v)) {
+            auto[to, length] = u;
+            if (distances[v] + length < distances[to]) {
+                set.erase({ distances[to], to });
+                distances[to] = distances[v] + length;
+                set.insert({ distances[to], to });
             }
         }
     }
@@ -107,7 +104,8 @@ auto Map::select_buildings(F&& functor) const -> std::vector<Node> {
 template<typename F>
 auto Map::select_random_buildings(size_t num, F&& functor) const -> ClosestNode {
     ClosestNode buildings {}, result {};
-    std::copy_if(building_to_node.cbegin(), building_to_node.cend(), std::inserter(buildings, buildings.end()),
+    std::copy_if(building_to_node.cbegin(), building_to_node.cend(),
+                 std::inserter(buildings, buildings.end()),
                  std::forward<F>(functor));
     if (buildings.empty()) { return buildings; }
     std::sample(buildings.cbegin(), buildings.cend(), std::inserter(result, result.end()), num,
@@ -142,7 +140,7 @@ bool Map::deserialize(const std::string& filename) {
 auto Map::shortest_paths(const Building& from, const ClosestNode& to) const -> ShortestPaths {
     auto paths = graph.dijkstra(building_to_node.at(from));
     ShortestPaths result {};
-    for (const auto& [_, node]: to) {
+    for (const auto&[_, node]: to) {
         result.insert({ node, paths[node] });
     }
     return result;

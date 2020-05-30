@@ -105,7 +105,7 @@ public:
     bool serialize(const std::string& filename = "graph.bin") const;
     bool deserialize(const std::string& filename = "graph.bin");
 
-    auto nodes() const { return data; }
+    const auto& nodes() const { return data; }
 
     auto dijkstra(Node s) const -> ShortestPaths;
 
@@ -161,8 +161,8 @@ struct Map {
     bool serialize(const std::string& filename = "map.bin");
     bool deserialize(const std::string& filename = "map.bin");
 
-    auto buildings() const { return building_to_node; }
-    auto nodes() const { return graph.nodes(); }
+    const auto& buildings() const { return building_to_node; }
+    const auto& nodes() const { return graph.nodes(); }
 
 private:
     ClosestNode building_to_node {};
