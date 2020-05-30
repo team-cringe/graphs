@@ -307,8 +307,10 @@ auto import_map(const std::string& filename) -> Map {
             auto node = std::min_element(routes.nodes().cbegin(), routes.nodes().cend(),
                                          [&](const auto& lhs, const auto& rhs) {
                                              return
-                                                 haversine(locations[lhs.first], building.pos()) <
-                                                 haversine(locations[rhs.first], building.pos());
+                                                 haversine(locations[lhs.first],
+                                                           building.location()) <
+                                                 haversine(locations[rhs.first],
+                                                           building.location());
                                          })->first;
             closest.insert({ building, node });
         }

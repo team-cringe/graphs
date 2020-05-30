@@ -85,9 +85,9 @@ struct Building {
     [[nodiscard]] bool is_house() const { return m_type == Type::House; }
     [[nodiscard]] bool is_facility() const { return m_type == Type::Facility; }
 
-    [[nodiscard]] Position pos() const { return m_position; }
-    [[nodiscard]] auto x() const { return m_position.first; }
-    [[nodiscard]] auto y() const { return m_position.second; }
+    [[nodiscard]] Position location() const { return m_position; }
+    [[nodiscard]] auto longitude() const { return m_position.first; }
+    [[nodiscard]] auto latitude() const { return m_position.second; }
     [[nodiscard]] auto weight() const { return m_weight; }
 
 private:
@@ -113,8 +113,8 @@ struct hash<graph::Building> {
         using boost::hash_combine;
 
         size_t seed = 0;
-        hash_combine(seed, hash_value(b.x()));
-        hash_combine(seed, hash_value(b.y()));
+        hash_combine(seed, hash_value(b.longitude()));
+        hash_combine(seed, hash_value(b.latitude()));
         hash_combine(seed, hash_value(b.weight()));
         return seed;
     }
@@ -164,7 +164,7 @@ public:
 
     const auto& nodes() const { return m_data; }
 
-    auto dijkstra(Node s) const -> std::pair<ShortestPaths, std::unordered_map<Node, Node>>;
+    auto dijkstra(Node s) const -> std::pair<ShortestPaths, Trail>;
 
 private:
     AdjacencyList m_data {};
