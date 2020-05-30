@@ -150,6 +150,19 @@ auto Map::shortest_paths(Building from, const Buildings& to) const -> Paths {
     Paths result {};
 
     for (const auto& building: to) {
+        auto node_to = m_closest.at(building);
+        auto distance = distances.at(node_to);
+        result.emplace_back(from, building, distance);
+    }
+
+    return result;
+}
+
+auto Map::shortest_paths_with_trace(Building from, const Buildings& to) const -> TracedPaths {
+    auto[distances, trail] = m_graph.dijkstra(m_closest.at(from));
+    TracedPaths result {};
+
+    for (const auto& building: to) {
         auto node_to = m_closest.at(building), node_from = m_closest.at(from);
         auto distance = distances.at(node_to);
 
@@ -171,11 +184,11 @@ auto Map::shortest_paths(Building from, const Buildings& to) const -> Paths {
 /**
  * Factory method for Position.
  */
-auto make_pos(const osmium::NodeRef& node) -> Position {
+auto make_pos(const osmium::NodeRef& node) -> Location {
     return { node.lat(), node.lon() };
 }
 
-auto haversine(const Position& x, const Position& y) -> Distance {
+auto haversine(const Location& x, const Location& y) -> Distance {
     const auto[lat1, lon1] = x;
     const auto[lat2, lon2] = y;
     constexpr long double R = 6'371'000;
@@ -200,7 +213,7 @@ auto haversine(const Position& x, const Position& y) -> Distance {
  * @param nodes List of nodes of an OSM way.
  * @return Geocenter described by a pair of latitude and longitude respectively.
  */
-auto barycenter(const osmium::WayNodeList& nodes) -> Position {
+auto barycenter(const osmium::WayNodeList& nodes) -> Location {
     const auto lat = std::accumulate(nodes.cbegin(), nodes.cend(), static_cast<long double>(0),
                                      [](auto lhs, const auto& node) { return lhs + node.lat(); });
     const auto lon = std::accumulate(nodes.cbegin(), nodes.cend(), static_cast<long double>(0),
@@ -232,7 +245,7 @@ auto make_building(const osmium::Way& way) -> Building {
 
 auto import_map(const std::string& filename) -> Map {
     using NodesMarker = std::unordered_map<std::uint64_t, bool>;
-    using NodesLocation = std::unordered_map<Node, Position>;
+    using NodesLocation = std::unordered_map<Node, Location>;
 
     struct CountHandler: public osmium::handler::Handler {
         NodesMarker marked {};

@@ -13,7 +13,7 @@
 namespace graph {
 using Distance = double;
 using Angle = long double;
-using Position = std::pair<Angle, Angle>;
+using Location = std::pair<Angle, Angle>;
 
 struct Node {
     explicit Node() = default;
@@ -23,19 +23,19 @@ struct Node {
 
     Node(std::uint64_t id, Angle longitude, Angle latitude)
         : m_id(id)
-        , m_longitude(longitude)
-        , m_latitude(latitude) {};
+        , m_latitude(latitude)
+        , m_longitude(longitude) {};
 
-    Node(std::uint64_t id, std::pair<Angle, Angle> location)
+    Node(std::uint64_t id, Location location)
         : m_id(id)
-        , m_longitude(location.first)
-        , m_latitude(location.second) {};
+        , m_latitude(location.first)
+        , m_longitude(location.second) {};
 
     [[nodiscard]] std::uint64_t id() const { return m_id; }
-    [[nodiscard]] Angle longitude() const { return m_longitude; }
     [[nodiscard]] Angle latitude() const { return m_latitude; }
-    [[nodiscard]] auto location() const -> std::pair<Angle, Angle> {
-        return { m_longitude, m_latitude };
+    [[nodiscard]] Angle longitude() const { return m_longitude; }
+    [[nodiscard]] auto location() const -> Location {
+        return { m_latitude, m_longitude };
     }
 
     friend class boost::serialization::access;
@@ -53,7 +53,7 @@ struct Node {
 
 private:
     std::uint64_t m_id = 0;
-    Angle m_longitude = 0, m_latitude = 0;
+    Angle m_latitude = 0, m_longitude = 0;
 };
 
 using Edge = std::pair<Node, Node>;
@@ -61,7 +61,7 @@ using Edge = std::pair<Node, Node>;
 struct Building {
     Building() = default;
 
-    Building(Position position, Distance weight, unsigned char type)
+    Building(Location position, Distance weight, unsigned char type)
         : m_position(std::move(position))
         , m_weight(weight) {
         if (type == 0) { m_type = Type::House; }
@@ -85,7 +85,7 @@ struct Building {
     [[nodiscard]] bool is_house() const { return m_type == Type::House; }
     [[nodiscard]] bool is_facility() const { return m_type == Type::Facility; }
 
-    [[nodiscard]] Position location() const { return m_position; }
+    [[nodiscard]] Location location() const { return m_position; }
     [[nodiscard]] auto longitude() const { return m_position.second; }
     [[nodiscard]] auto latitude() const { return m_position.first; }
     [[nodiscard]] auto weight() const { return m_weight; }
@@ -96,7 +96,7 @@ private:
         Facility
     };
 
-    Position m_position = { 0, 0 };
+    Location m_position = { 0, 0 };
     Distance m_weight = 0;
     Type m_type = Type::House;
 };
@@ -188,25 +188,34 @@ struct Map {
         , m_graph(std::move(graph)) {};
 
     struct Path {
-        Path(Building from, Building to, Nodes path, Distance distance)
+        Path(Building from, Building to, Distance distance)
             : m_from(std::move(from))
             , m_to(std::move(to))
-            , m_path(std::move(path))
             , m_distance(distance) {};
 
         [[nodiscard]] auto ends() const -> std::pair<Building, Building> {
             return { m_from, m_to };
         }
-        [[nodiscard]] const Nodes& path() const { return m_path; }
         [[nodiscard]] Distance distance() const { return m_distance; }
 
     private:
         Building m_from, m_to;
-        Nodes m_path;
         Distance m_distance;
     };
 
+    struct TracedPath: public Path {
+        TracedPath(Building from, Building to, Nodes path, Distance distance)
+            : Path(from, to, distance)
+            , m_trace(std::move(path)) {};
+
+        [[nodiscard]] const Nodes& path() const { return m_trace; }
+
+    private:
+        Nodes m_trace;
+    };
+
     using Paths = std::vector<Path>;
+    using TracedPaths = std::vector<TracedPath>;
 
     /**
      * Select buildings by applying functor to each.
@@ -234,7 +243,8 @@ struct Map {
      *
      * @return Mapping from Nodes to the corresponding paths from the given Node.
      */
-    auto shortest_paths(Building from, const Buildings& to) const -> std::vector<Path>;
+    auto shortest_paths_with_trace(Building from, const Buildings& to) const -> TracedPaths;
+    auto shortest_paths(Building from, const Buildings& to) const -> Paths;
 
     bool serialize(const std::string& filename = "map.bin") const;
     bool deserialize(const std::string& filename = "map.bin");
@@ -261,7 +271,7 @@ auto import_map(const std::string& filename) -> Map;
  * @param x, y OSM nodes with corresponding coordinates.
  * @return Distance between nodes.
  */
-auto haversine(const Position& x, const Position& y) -> Distance;
+auto haversine(const Location& x, const Location& y) -> Distance;
 } // namespace graph
 
 #endif // GRAPH_HPP
