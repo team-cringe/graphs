@@ -1,7 +1,9 @@
 #include <iostream>
+#include <thread>
 
 #include "argparse.hpp"
 #include "assessment.hpp"
+#include "planning.hpp"
 
 int main(int argc, const char** argv) {
     argparse::ArgumentParser program { "graphs" };
@@ -9,12 +11,12 @@ int main(int argc, const char** argv) {
     /*
      * Main tasks.
      */
-    program.add_argument("nodes")
-           .help("buildings nodes")
+    program.add_argument("houses")
+           .help("number of houses")
            .action([](const std::string& value) { return std::stoi(value); });
 
-    program.add_argument("objects")
-           .help("infrastructure objects")
+    program.add_argument("facilities")
+           .help("number of facilities")
            .action([](const std::string& value) { return std::stoi(value); });
 
     /*
@@ -33,5 +35,15 @@ int main(int argc, const char** argv) {
         exit(0);
     }
 
-    assessment::nearest(program.get<int>("nodes"), program.get<int>("objects"));
+    auto houses = program.get<int>("houses"),
+        facilities = program.get<int>("facilities");
+
+    /*
+     * Start tasks in separate threads.
+     */
+    std::thread first { nearest, houses, facilities };
+    std::thread second { planning, houses, facilities };
+
+    first.join();
+    second.join();
 };
