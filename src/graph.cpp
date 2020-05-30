@@ -51,29 +51,30 @@ bool deserialize(const std::string& filename, T&& data) {
 bool Graph::add_edge_one_way(Edge&& e, Distance d) noexcept {
     auto[from, to] = e;
     if (from == to) { return false; }
-    return data[from].insert({ to, d }).second;
+    return m_data[from].insert({ to, d }).second;
 };
 
 bool Graph::add_edge_two_way(Edge&& e, Distance d) noexcept {
     auto[from, to] = e;
     if (from == to) { return false; }
-    return data[from].insert({ to, d }).second && data[to].insert({ from, d }).second;
+    return m_data[from].insert({ to, d }).second && m_data[to].insert({ from, d }).second;
 }
 
 bool Graph::serialize(const std::string& filename) const {
-    return ::graph::serialize(filename, data);
+    return ::graph::serialize(filename, m_data);
 }
 
 bool Graph::deserialize(const std::string& filename) {
     if (!std::filesystem::exists(filename)) { return false; }
-    return ::graph::deserialize(filename, data);
+    return ::graph::deserialize(filename, m_data);
 }
 
-auto Graph::dijkstra(Node s) const -> ShortestPaths {
+auto Graph::dijkstra(Node s) const -> std::pair<ShortestPaths, Trail> {
     constexpr auto INF = std::numeric_limits<double>::max();
 
     std::unordered_map<Node, Distance> distances;
     std::set<std::pair<Distance, Node>> set;
+    std::unordered_map<Node, Node> previous;
 
     for (const auto&[node, _]: nodes()) { distances[node] = INF; }
 
@@ -87,12 +88,13 @@ auto Graph::dijkstra(Node s) const -> ShortestPaths {
             if (distances[v] + length < distances[to]) {
                 set.erase({ distances[to], to });
                 distances[to] = distances[v] + length;
+                previous[to] = v;
                 set.insert({ distances[to], to });
             }
         }
     }
 
-    return distances;
+    return { distances, previous };
 }
 
 /*
@@ -101,54 +103,68 @@ auto Graph::dijkstra(Node s) const -> ShortestPaths {
 template<typename F>
 auto Map::select_buildings(F&& functor) const -> std::vector<Node> {
     std::vector<Node> result {};
-    for (const auto&[building, node]: building_to_node) {
+    for (const auto&[building, node]: m_closest) {
         if (functor(building)) { result.push_back(node); }
     }
     return result;
 };
 
 template<typename F>
-auto Map::select_random_buildings(size_t num, F&& functor) const -> ClosestNode {
-    ClosestNode buildings {}, result {};
-    std::copy_if(building_to_node.cbegin(), building_to_node.cend(),
-                 std::inserter(buildings, buildings.end()),
-                 std::forward<F>(functor));
+auto Map::select_random_buildings(size_t num, F&& functor) const -> Buildings {
+    Buildings buildings {}, result {};
+    for (const auto&[building, node]: m_closest) {
+        if (functor(building)) {
+            buildings.push_back(building);
+        }
+    }
     if (buildings.empty()) { return buildings; }
     std::sample(buildings.cbegin(), buildings.cend(), std::inserter(result, result.end()), num,
                 std::mt19937 { std::random_device {}() });
     return result;
 }
 
-auto Map::select_random_facilities(size_t num) const -> ClosestNode {
-    return select_random_buildings(num, [](const auto& p) {
-        const auto[building, _] = p;
-        return building.is_facility();
+auto Map::select_random_facilities(size_t num) const -> Buildings {
+    return select_random_buildings(num, [](const auto& b) {
+        return b.is_facility();
     });
 };
 
-auto Map::select_random_houses(size_t num) const -> ClosestNode {
-    return select_random_buildings(num, [](const auto& p) {
-        const auto[building, _] = p;
-        return building.is_house();
+auto Map::select_random_houses(size_t num) const -> Buildings {
+    return select_random_buildings(num, [](const auto& b) {
+        return b.is_house();
     });
 };
 
-bool Map::serialize(const std::string& filename) {
-    return ::graph::serialize(filename, building_to_node) && graph.serialize("graph.bin");
+bool Map::serialize(const std::string& filename) const {
+    return ::graph::serialize(filename, m_closest) && m_graph.serialize("graph.bin");
 };
 
 bool Map::deserialize(const std::string& filename) {
     if (!std::filesystem::exists(filename)) { return false; }
-    return ::graph::deserialize(filename, building_to_node) &&
-           graph.deserialize("graph.bin");
+    return ::graph::deserialize(filename, m_closest) &&
+           m_graph.deserialize("graph.bin");
 };
 
-auto Map::shortest_paths(const Building& from, const ClosestNode& to) const -> ShortestPaths {
-    auto paths = graph.dijkstra(building_to_node.at(from));
-    ShortestPaths result {};
-    for (const auto&[_, node]: to) {
-        result.insert({ node, paths[node] });
+auto Map::shortest_paths(Building from, const Buildings& to) const -> Paths {
+    auto[distances, trail] = m_graph.dijkstra(m_closest.at(from));
+    Paths result {};
+
+    for (const auto& building: to) {
+        auto node_to = m_closest.at(building), node_from = m_closest.at(from);
+        auto distance = distances.at(node_to);
+
+        // Reconstruct path.
+        std::vector<Node> path;
+        for (auto v = node_to; v != m_closest.at(from); v = trail[v]) {
+            path.push_back(v);
+        }
+        path.push_back(node_from);
+        reverse(path.begin(), path.end());
+
+        // Build path in place.
+        result.emplace_back(from, building, path, distance);
     }
+
     return result;
 }
 

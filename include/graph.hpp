@@ -21,33 +21,33 @@ using Edge = std::pair<Node, Node>;
 struct Building {
     Building() = default;
 
-    Building(Position p, Distance w, unsigned char t)
-        : p(std::move(p))
-        , w(w) {
-        if (t == 0) { type = Type::House; }
-        else { type = Type::Facility; }
+    Building(Position position, Distance weight, unsigned char type)
+        : m_position(std::move(position))
+        , m_weight(weight) {
+        if (type == 0) { m_type = Type::House; }
+        else { m_type = Type::Facility; }
     }
 
     bool operator==(const Building& other) const {
-        return type == other.type && p == other.p && w == other.w;
+        return m_type == other.m_type && m_position == other.m_position && m_weight == other.m_weight;
     }
 
     friend class boost::serialization::access;
     template<typename Archive>
     void serialize(Archive& archive, const unsigned int& version) {
         (void) version;
-        archive & p;
-        archive & w;
-        archive & type;
+        archive & m_position;
+        archive & m_weight;
+        archive & m_type;
     }
 
-    [[nodiscard]] bool is_house() const { return type == Type::House; }
-    [[nodiscard]] bool is_facility() const { return type == Type::Facility; }
+    [[nodiscard]] bool is_house() const { return m_type == Type::House; }
+    [[nodiscard]] bool is_facility() const { return m_type == Type::Facility; }
 
-    [[nodiscard]] Position pos() const { return p; }
-    [[nodiscard]] auto x() const { return p.first; }
-    [[nodiscard]] auto y() const { return p.second; }
-    [[nodiscard]] auto weight() const { return w; }
+    [[nodiscard]] Position pos() const { return m_position; }
+    [[nodiscard]] auto x() const { return m_position.first; }
+    [[nodiscard]] auto y() const { return m_position.second; }
+    [[nodiscard]] auto weight() const { return m_weight; }
 
 private:
     enum class Type {
@@ -55,9 +55,9 @@ private:
         Facility
     };
 
-    Position p = { 0, 0 };
-    Distance w = 0;
-    Type type = Type::House;
+    Position m_position = { 0, 0 };
+    Distance m_weight = 0;
+    Type m_type = Type::House;
 };
 
 using Nodes = std::vector<Node>;
@@ -98,6 +98,7 @@ struct Graph {
 private:
     using OutgoingEdges = std::unordered_map<Node, Distance>;
     using AdjacencyList = std::unordered_map<Node, OutgoingEdges>;
+    using Trail = std::unordered_map<Node, Node>;
 
 public:
     bool add_edge_one_way(Edge&& e, Distance d = 0) noexcept;
@@ -106,12 +107,12 @@ public:
     bool serialize(const std::string& filename = "graph.bin") const;
     bool deserialize(const std::string& filename = "graph.bin");
 
-    const auto& nodes() const { return data; }
+    const auto& nodes() const { return m_data; }
 
-    auto dijkstra(Node s) const -> ShortestPaths;
+    auto dijkstra(Node s) const -> std::pair<ShortestPaths, std::unordered_map<Node, Node>>;
 
 private:
-    AdjacencyList data {};
+    AdjacencyList m_data {};
 };
 
 /**
@@ -127,9 +128,30 @@ private:
 struct Map {
     Map() = default;
 
-    Map(ClosestNode c, Graph g)
-        : building_to_node(std::move(c))
-        , graph(std::move(g)) {};
+    Map(ClosestNode closest, Graph graph)
+        : m_closest(std::move(closest))
+        , m_graph(std::move(graph)) {};
+
+    struct Path {
+        Path(Building from, Building to, Nodes path, Distance distance)
+            : m_from(std::move(from))
+            , m_to(std::move(to))
+            , m_path(std::move(path))
+            , m_distance(distance) {};
+
+        [[nodiscard]] auto destinations() const -> std::pair<Building, Building> {
+            return { m_from, m_to };
+        }
+        [[nodiscard]] const Nodes& path() const { return m_path; }
+        [[nodiscard]] Distance distance() const { return m_distance; }
+
+    private:
+        Building m_from, m_to;
+        Nodes m_path;
+        Distance m_distance;
+    };
+
+    using Paths = std::vector<Path>;
 
     /**
      * Select buildings by applying functor to each.
@@ -148,26 +170,26 @@ struct Map {
      * @return Vector of corresponding nodes.
      */
     template<typename F>
-    auto select_random_buildings(size_t num, F&& functor) const -> ClosestNode;
-    auto select_random_facilities(size_t num) const -> ClosestNode;
-    auto select_random_houses(size_t num) const -> ClosestNode;
+    auto select_random_buildings(size_t num, F&& functor) const -> Buildings;
+    auto select_random_facilities(size_t num) const -> Buildings;
+    auto select_random_houses(size_t num) const -> Buildings;
 
     /**
      * Get shortest paths from Node to all other Nodes specified.
      *
      * @return Mapping from Nodes to the corresponding paths from the given Node.
      */
-    auto shortest_paths(const Building& from, const ClosestNode& to) const -> ShortestPaths;
+    auto shortest_paths(Building from, const Buildings& to) const -> std::vector<Path>;
 
-    bool serialize(const std::string& filename = "map.bin");
+    bool serialize(const std::string& filename = "map.bin") const;
     bool deserialize(const std::string& filename = "map.bin");
 
-    const auto& buildings() const { return building_to_node; }
-    const auto& nodes() const { return graph.nodes(); }
+    const auto& buildings() const { return m_closest; }
+    const auto& nodes() const { return m_graph.nodes(); }
 
 private:
-    ClosestNode building_to_node {};
-    Graph graph {};
+    ClosestNode m_closest {};
+    Graph m_graph {};
 };
 
 /**
