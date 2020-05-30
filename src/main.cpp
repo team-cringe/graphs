@@ -1,6 +1,7 @@
 #include <iostream>
 #include <thread>
 
+#include "graph.hpp"
 #include "argparse.hpp"
 #include "assessment.hpp"
 #include "planning.hpp"
@@ -37,12 +38,13 @@ int main(int argc, const char** argv) {
 
     auto houses = program.get<int>("houses"),
         facilities = program.get<int>("facilities");
+    auto map = graph::import_map("NNMap.pbf");
 
     /*
      * Start tasks in separate threads.
      */
-    std::thread first { nearest, houses, facilities };
-    std::thread second { planning, houses, facilities };
+    auto first = std::thread { assessment, std::ref(map), houses, facilities };
+    auto second = std::thread { planning, std::ref(map), houses, facilities };
 
     first.join();
     second.join();
