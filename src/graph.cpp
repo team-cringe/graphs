@@ -48,11 +48,17 @@ bool deserialize(const std::string& filename, T&& data) {
 /*
  * Graph structure declaration.
  */
-bool Graph::add_edge(Edge&& e, Distance d) noexcept {
+bool Graph::add_edge_one_way(Edge&& e, Distance d) noexcept {
+    auto[from, to] = e;
+    if (from == to) { return false; }
+    return data[from].insert({ to, d }).second;
+};
+
+bool Graph::add_edge_two_way(Edge&& e, Distance d) noexcept {
     auto[from, to] = e;
     if (from == to) { return false; }
     return data[from].insert({ to, d }).second && data[to].insert({ from, d }).second;
-};
+}
 
 bool Graph::serialize(const std::string& filename) const {
     return ::graph::serialize(filename, data);
@@ -237,6 +243,7 @@ auto import_map(const std::string& filename) -> Map {
 
         void way(const osmium::Way& way) noexcept {
             if (!way.tags().has_key("highway")) { return; }
+            bool one_way = way.tags().has_tag("oneway", "yes");
 
             auto first = way.nodes().cbegin();
             auto last = way.nodes().crbegin();
@@ -248,14 +255,22 @@ auto import_map(const std::string& filename) -> Map {
                     if (marked.at(node.ref())) {
                         // Split up the way
                         const auto distance = haversine(make_pos(*pred), make_pos(node));
-                        routes.add_edge({ pred->ref(), node.ref() }, distance);
+                        if (one_way) {
+                            routes.add_edge_one_way({ pred->ref(), node.ref() }, distance);
+                        } else {
+                            routes.add_edge_two_way({ pred->ref(), node.ref() }, distance);
+                        }
                         pred = &node;
                     }
                 }
             }
 
             const auto distance = haversine(make_pos(*pred), make_pos(*last));
-            routes.add_edge({ pred->ref(), last->ref() }, distance);
+            if (one_way) {
+                routes.add_edge_one_way({ pred->ref(), last->ref() }, distance);
+            } else {
+                routes.add_edge_two_way({ pred->ref(), last->ref() }, distance);
+            }
         }
     };
 

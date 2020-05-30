@@ -100,7 +100,8 @@ private:
     using AdjacencyList = std::unordered_map<Node, OutgoingEdges>;
 
 public:
-    bool add_edge(Edge&& e, Distance d = 0) noexcept;
+    bool add_edge_one_way(Edge&& e, Distance d = 0) noexcept;
+    bool add_edge_two_way(Edge&& e, Distance d = 0) noexcept;
 
     bool serialize(const std::string& filename = "graph.bin") const;
     bool deserialize(const std::string& filename = "graph.bin");
