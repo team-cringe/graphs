@@ -86,8 +86,8 @@ struct Building {
     [[nodiscard]] bool is_facility() const { return m_type == Type::Facility; }
 
     [[nodiscard]] Position location() const { return m_position; }
-    [[nodiscard]] auto longitude() const { return m_position.first; }
-    [[nodiscard]] auto latitude() const { return m_position.second; }
+    [[nodiscard]] auto longitude() const { return m_position.second; }
+    [[nodiscard]] auto latitude() const { return m_position.first; }
     [[nodiscard]] auto weight() const { return m_weight; }
 
 private:
