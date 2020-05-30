@@ -1,49 +1,48 @@
-#include "nlohmann/json.hpp"
-#include "graph.hpp"
+#include <fstream>
 
+#include "nlohmann/json.hpp"
 #include "geojson.hpp"
-#include "fstream"
+#include "graph.hpp"
 
 using nlohmann::json;
 
-
 json building_to_geojson_point(const graph::Building& building) {
     return json {
-        {"type", "Feature"},
-        {"properties", {}},
-        {"geometry", {
-            {"type", "Point"},
-            {"coordinates", {building.longitude(), building.latitude()}}
+        { "type", "Feature" },
+        { "properties", {}},
+        { "geometry", {
+            { "type", "Point" },
+            { "coordinates", { building.longitude(), building.latitude() }}
         }}
     };
 }
 
 json path_to_geojson(const graph::Map::Path& path) {
-    auto [from, to] = path.ends();
+    auto[from, to] = path.ends();
     json way = {
-        {"type", "Feature"},
-        {"properties", {}},
-        {"geometry", {
-            {"type", "LineString"},
-            {"coordinates", {
-                {from.longitude(), from.latitude()}
+        { "type", "Feature" },
+        { "properties", {}},
+        { "geometry", {
+            { "type", "LineString" },
+            { "coordinates", {
+                { from.longitude(), from.latitude() }
             }}
         }}
     };
 
     for (const auto& node: path.path()) {
-        way["geometry"]["coordinates"].push_back({node.longitude(), node.latitude()});
+        way["geometry"]["coordinates"].push_back({ node.longitude(), node.latitude() });
     }
 
-    way["geometry"]["coordinates"].push_back({to.longitude(), to.latitude()});
+    way["geometry"]["coordinates"].push_back({ to.longitude(), to.latitude() });
 
     return way;
 }
 
 json paths_and_buildings_to_geojson(const Map::Paths& paths, const Buildings& buildings) {
     json geojson = {
-        {"type", "FeatureCollection"},
-        {"features", {}},
+        { "type", "FeatureCollection" },
+        { "features", {}},
     };
 
     for (auto& building: buildings) {

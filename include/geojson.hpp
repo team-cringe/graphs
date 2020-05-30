@@ -1,8 +1,8 @@
 #ifndef GEOJSON_HPP
 #define GEOJSON_HPP
 
-#include "graph.hpp"
 #include "nlohmann/json.hpp"
+#include "graph.hpp"
 
 using namespace graph;
 using nlohmann::json;
@@ -15,4 +15,4 @@ json paths_and_buildings_to_geojson(const Map::Paths& paths, const Buildings& bu
 
 void dump_to_file(const json& geojson, std::string filename = "geojson.out");
 
-#endif //GEOJSON_HPP
+#endif // GEOJSON_HPP
