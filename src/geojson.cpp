@@ -17,7 +17,7 @@ json building_to_geojson_point(const graph::Building& building) {
     };
 }
 
-json path_to_geojson(const graph::Map::Path& path) {
+json path_to_geojson(const graph::Map::TracedPath& path) {
     auto[from, to] = path.ends();
     json way = {
         { "type", "Feature" },
@@ -39,7 +39,7 @@ json path_to_geojson(const graph::Map::Path& path) {
     return way;
 }
 
-json paths_and_buildings_to_geojson(const Map::Paths& paths, const Buildings& buildings) {
+json paths_and_buildings_to_geojson(const Map::TracedPaths& paths, const Buildings& buildings) {
     json geojson = {
         { "type", "FeatureCollection" },
         { "features", {}},
