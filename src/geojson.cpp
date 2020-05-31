@@ -88,7 +88,6 @@ json edge_to_geojson(Building from, Node to) {
     };
 }
 
-
 void dump_to_file(const json& geojson, std::string filename) {
     std::ofstream outfile(filename);
     outfile << geojson.dump(4);
@@ -100,7 +99,7 @@ json map_to_geojson(const Map& map) {
         { "features", {}},
     };
 
-    for (auto& [building, node]: map.buildings()) {
+    for (auto&[building, node]: map.buildings()) {
         auto point = building_to_geojson_point(building);
         geojson["features"].push_back(point);
 
@@ -108,7 +107,7 @@ json map_to_geojson(const Map& map) {
         geojson["features"].push_back(edge);
     }
 
-    for (const auto& [node, edges]: map.nodes()) {
+    for (const auto&[node, edges]: map.nodes()) {
         for (const auto& edge: edges) {
             auto edge_geojson = edge_to_geojson(node, edge.first);
             geojson["features"].push_back(edge_geojson);

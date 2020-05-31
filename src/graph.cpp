@@ -184,11 +184,12 @@ auto Map::shortest_paths_with_trace(Building from, const Buildings& to) const ->
 auto Map::weights_sum() const -> long double {
     return std::accumulate(nodes().cbegin(), nodes().cend(), static_cast<long double>(0),
                            [](auto lhs, const auto& node) {
-                               return lhs + std::accumulate(node.second.cbegin(), node.second.cend(),
-                                                            static_cast<long double>(0),
-                                                            [](auto lhs, const auto& edge) {
-                                                                return lhs + edge.second;
-                                                            });
+                               return lhs +
+                                      std::accumulate(node.second.cbegin(), node.second.cend(),
+                                                      static_cast<long double>(0),
+                                                      [](auto lhs, const auto& edge) {
+                                                          return lhs + edge.second;
+                                                      });
                            });
 }
 
