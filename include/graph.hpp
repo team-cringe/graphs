@@ -246,6 +246,11 @@ struct Map {
     auto shortest_paths_with_trace(Building from, const Buildings& to) const -> TracedPaths;
     auto shortest_paths(Building from, const Buildings& to) const -> Paths;
 
+    /**
+     * Summarize all edges' weights
+     */
+    auto weights_sum() const -> long double;
+
     bool serialize(const std::string& filename = "map.bin") const;
     bool deserialize(const std::string& filename = "map.bin");
 
