@@ -15,4 +15,6 @@ json paths_and_buildings_to_geojson(const Map::TracedPaths& paths, const Buildin
 
 void dump_to_file(const json& geojson, std::string filename = "geojson.out");
 
+json map_to_geojson(const Map& map);
+
 #endif // GEOJSON_HPP
