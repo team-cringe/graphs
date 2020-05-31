@@ -13,7 +13,7 @@ json path_to_geojson(const Map::TracedPath& path);
 
 json paths_and_buildings_to_geojson(const Map::TracedPaths& paths, const Buildings& buildings);
 
-void dump_to_file(const json& geojson, std::string filename = "geojson.out");
+void dump_to_file(const json& geojson, const std::string& filename = "geojson.out");
 
 json map_to_geojson(const Map& map);
 

@@ -14,6 +14,7 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/serialization/unordered_map.hpp>
+#include <boost/serialization/vector.hpp>
 
 #include <osmium/osm/types.hpp>
 #include <osmium/handler.hpp>
@@ -21,6 +22,7 @@
 #include <osmium/index/map/flex_mem.hpp>
 #include <osmium/handler/node_locations_for_ways.hpp>
 #include <osmium/io/pbf_input.hpp>
+#include <unordered_set>
 
 namespace graph {
 template<typename T>
@@ -101,10 +103,10 @@ auto Graph::dijkstra(Node s) const -> std::pair<ShortestPaths, Trail> {
  * Map structure declaration.
  */
 template<typename F>
-auto Map::select_buildings(F&& functor) const -> std::vector<Node> {
-    std::vector<Node> result {};
-    for (const auto&[building, node]: m_closest) {
-        if (functor(building)) { result.push_back(node); }
+auto Map::select_buildings(F&& functor) const -> Buildings {
+    Buildings result {};
+    for (const auto& building: m_buildings) {
+        if (functor(building)) { result.push_back(building); }
     }
     return result;
 };
@@ -112,7 +114,7 @@ auto Map::select_buildings(F&& functor) const -> std::vector<Node> {
 template<typename F>
 auto Map::select_random_buildings(size_t num, F&& functor) const -> Buildings {
     Buildings buildings {}, result {};
-    for (const auto&[building, node]: m_closest) {
+    for (const auto& building: m_buildings) {
         if (functor(building)) {
             buildings.push_back(building);
         }
@@ -136,21 +138,21 @@ auto Map::select_random_houses(size_t num) const -> Buildings {
 };
 
 bool Map::serialize(const std::string& filename) const {
-    return ::graph::serialize(filename, m_closest) && m_graph.serialize("graph.bin");
+    return ::graph::serialize(filename, m_buildings) && m_graph.serialize("graph.bin");
 };
 
 bool Map::deserialize(const std::string& filename) {
     if (!std::filesystem::exists(filename)) { return false; }
-    return ::graph::deserialize(filename, m_closest) &&
+    return ::graph::deserialize(filename, m_buildings) &&
            m_graph.deserialize("graph.bin");
 };
 
 auto Map::shortest_paths(Building from, const Buildings& to) const -> Paths {
-    auto[distances, trail] = m_graph.dijkstra(m_closest.at(from));
+    auto[distances, trail] = m_graph.dijkstra(from.closest());
     Paths result {};
 
     for (const auto& building: to) {
-        auto node_to = m_closest.at(building);
+        auto node_to = building.closest();
         auto distance = distances.at(node_to);
         result.emplace_back(from, building, distance);
     }
@@ -159,16 +161,16 @@ auto Map::shortest_paths(Building from, const Buildings& to) const -> Paths {
 }
 
 auto Map::shortest_paths_with_trace(Building from, const Buildings& to) const -> TracedPaths {
-    auto[distances, trail] = m_graph.dijkstra(m_closest.at(from));
+    auto[distances, trail] = m_graph.dijkstra(from.closest());
     TracedPaths result {};
 
     for (const auto& building: to) {
-        auto node_to = m_closest.at(building), node_from = m_closest.at(from);
+        auto node_to = building.closest(), node_from = from.closest();
         auto distance = distances.at(node_to);
 
         // Reconstruct path.
         std::vector<Node> path;
-        for (auto v = node_to; v != m_closest.at(from); v = trail[v]) {
+        for (auto v = node_to; v != from.closest(); v = trail[v]) {
             path.push_back(v);
         }
         path.push_back(node_from);
@@ -194,27 +196,30 @@ auto Map::weights_sum() const -> long double {
 }
 
 Map paths_to_map(const Map& map, const Map::TracedPaths& paths) {
-    ClosestNode closest;
+    std::unordered_set<Building> set;
+    Buildings buildings;
     Graph routes;
 
     for (const auto& path: paths) {
         auto[from, to] = path.ends();
-        closest.insert(*map.buildings().find(from));
-        closest.insert(*map.buildings().find(to));
+        set.insert(from);
+        set.insert(to);
 
         auto pred = *path.path().begin();
-
         for (const auto curr: path.path()) {
             if (curr == pred) { continue; }
-
             auto weight = map.nodes().find(pred)->second.find(curr)->second;
             routes.add_edge_one_way({ pred, curr }, weight);
-
             pred = curr;
         }
     }
 
-    return Map { closest, routes };
+    buildings.reserve(set.size());
+    for (auto b: set) {
+        buildings.push_back(set.extract(b).value());
+    }
+
+    return Map { buildings, routes };
 }
 
 /**
@@ -267,16 +272,15 @@ auto barycenter(const osmium::WayNodeList& nodes) -> Location {
  *
  * @param way OSM way that represents building (or you gonna catch runtime error, lol).
  */
-auto make_building(const osmium::Way& way) -> Building {
+auto make_building(const osmium::Way& way, Location location, const Node& closest) -> Building {
     const auto type = way.tags().get_value_by_key("building");
-    const auto position = barycenter(way.nodes());
     const std::vector<std::string> houses =
         { "apartments", "bungalow", "cabin", "detached", "dormitory", "farm", "ger", "hotel",
           "house", "houseboat", "residential", " semidetached_house", "static_caravan", "terrace" };
     for (const auto& house: houses) {
-        if (type == house) { return Building { position, 0, 0 }; }
+        if (type == house) { return Building { way.positive_id(), location, 0, closest, 0 }; }
     }
-    return Building { position, 0, 1 };
+    return Building { way.positive_id(), location, 0, closest, 1 };
 }
 
 auto import_map(const std::string& filename) -> Map {
@@ -346,22 +350,21 @@ auto import_map(const std::string& filename) -> Map {
     struct MapHandler: public osmium::handler::Handler {
         Graph routes;
         NodesLocation locations;
-        ClosestNode closest {};
+        Buildings buildings {};
 
         void way(const osmium::Way& way) noexcept {
             if (!way.tags().has_key("building")) { return; }
 
-            auto building = make_building(way);
+            const auto location = barycenter(way.nodes());
             // Get reference to the closest node
             auto node = std::min_element(routes.nodes().cbegin(), routes.nodes().cend(),
                                          [&](const auto& lhs, const auto& rhs) {
                                              return
-                                                 haversine(locations[lhs.first],
-                                                           building.location()) <
-                                                 haversine(locations[rhs.first],
-                                                           building.location());
+                                                 haversine(locations[lhs.first], location) <
+                                                 haversine(locations[rhs.first], location);
                                          })->first;
-            closest.insert({ building, node });
+            auto building = make_building(way, location, node);
+            buildings.push_back(building);
         }
     };
 
@@ -397,7 +400,7 @@ auto import_map(const std::string& filename) -> Map {
     gr.close();
 
     // Create map and serialize
-    Map map { gh.closest, gh.routes };
+    Map map { gh.buildings, gh.routes };
     map.serialize();
 
     return map;
