@@ -258,6 +258,15 @@ private:
 };
 
 /**
+ * Convert paths to new map
+ *
+ * @param map
+ * @param paths
+ * @return new map
+ */
+Map paths_to_map(const Map& map, const Map::TracedPaths& paths);
+
+/**
  * Constructs routing graph based on provided OSM geodata.
  *
  * @param file File with geographic data.

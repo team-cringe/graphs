@@ -181,6 +181,30 @@ auto Map::shortest_paths_with_trace(Building from, const Buildings& to) const ->
     return result;
 }
 
+Map paths_to_map(const Map& map, const Map::TracedPaths& paths) {
+    ClosestNode closest;
+    Graph routes;
+
+    for (const auto& path: paths) {
+        auto[from, to] = path.ends();
+        closest.insert(*map.buildings().find(from));
+        closest.insert(*map.buildings().find(to));
+
+        auto pred = *path.path().begin();
+
+        for (const auto curr: path.path()) {
+            if (curr == pred) { continue; }
+
+            auto weight = map.nodes().find(pred)->second.find(curr)->second;
+            routes.add_edge_one_way({ pred, curr }, weight);
+
+            pred = curr;
+        }
+    }
+
+    return Map { closest, routes };
+}
+
 /**
  * Factory method for Position.
  */
