@@ -8,7 +8,8 @@ set(DATA ${PROJECT_SOURCE_DIR}/data)
 set(GRAPHS_SOURCES ${SOURCE}/assessment.cpp
         ${SOURCE}/planning.cpp
         ${SOURCE}/graph.cpp
-        ${SOURCE}/main.cpp)
+        ${SOURCE}/main.cpp
+        ${SOURCE}/geojson.cpp)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
