@@ -9,7 +9,10 @@ set(GRAPHS_SOURCES ${SOURCE}/assessment.cpp
         ${SOURCE}/planning.cpp
         ${SOURCE}/graph.cpp
         ${SOURCE}/main.cpp
-        ${SOURCE}/geojson.cpp)
+        ${SOURCE}/geojson.cpp
+        ${SOURCE}/distance_matrix.cpp
+        ${SOURCE}/clustering.cpp
+)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
