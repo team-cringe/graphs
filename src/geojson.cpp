@@ -88,6 +88,20 @@ json edge_to_geojson(Building from, Node to) {
     };
 }
 
+json edge_to_geojson(Location from, Location to) {
+    return {
+        { "type", "Feature" },
+        { "properties", {}},
+        { "geometry", {
+            { "type", "LineString" },
+            { "coordinates", {
+                from,
+                to,
+            }}
+        }}
+    };
+}
+
 void dump_to_file(const json& geojson, const std::string& filename) {
     std::ofstream outfile(filename);
     outfile << geojson.dump(4);

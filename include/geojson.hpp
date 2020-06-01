@@ -17,4 +17,6 @@ void dump_to_file(const json& geojson, const std::string& filename = "geojson.ou
 
 json map_to_geojson(const Map& map);
 
+json edge_to_geojson(Location from, Location to);
+
 #endif // GEOJSON_HPP
