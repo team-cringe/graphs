@@ -14,6 +14,7 @@ namespace graph {
 using Distance = double;
 using Angle = long double;
 using Location = std::pair<Angle, Angle>;
+using Locations = std::vector<Location>;
 
 struct Node {
     explicit Node() = default;
@@ -295,6 +296,11 @@ auto import_map(const std::string& filename) -> Map;
  * @return Distance between nodes.
  */
 auto haversine(const Location& x, const Location& y) -> Distance;
+
+/**
+ * Mean of locations
+ */
+auto barycenter(const Locations& locations) -> Location;
 } // namespace graph
 
 #endif // GRAPH_HPP

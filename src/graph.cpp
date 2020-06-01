@@ -264,6 +264,18 @@ auto barycenter(const osmium::WayNodeList& nodes) -> Location {
     return { lat / num, lon / num };
 }
 
+auto barycenter(const Locations& locations) -> Location {
+    const auto
+        lat = std::accumulate(locations.cbegin(), locations.cend(), static_cast<long double>(0),
+                              [](auto lhs, const auto& node) { return lhs + node.first; });
+    const auto
+        lon = std::accumulate(locations.cbegin(), locations.cend(), static_cast<long double>(0),
+                              [](auto lhs, const auto& node) { return lhs + node.second; });
+    const auto num = locations.size();
+
+    return { lat / num, lon / num };
+}
+
 /**
  * Factory method for Building.
  * Calculates its position and resolves correct type based on OSM data.
