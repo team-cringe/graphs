@@ -6,7 +6,7 @@
 
 using namespace graph;
 
-template <typename T>
+template<typename T>
 using DMatrix = std::unordered_map<std::pair<T, T>, double>;
 
 namespace std {
@@ -29,6 +29,5 @@ struct hash<std::pair<Building, Building>> {
  * Calculates distances with dijkstra and stores them in DMatrix.
  */
 auto dmatrix_for_buildings(const Map& map, const Buildings& buildings) -> DMatrix<Building>;
-
 
 #endif //DISTANCE_MATRIX_HPP

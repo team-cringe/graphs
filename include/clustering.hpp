@@ -15,7 +15,7 @@ struct Cluster {
         : m_size(1)
         , m_first(first)
         , m_last(first)
-        , m_id(clusters_num++)
+        , m_id(overall_clusters_num++)
         , m_loc(move(loc)) {}
 
     explicit Cluster(Cluster& a, Cluster& b)
@@ -24,7 +24,7 @@ struct Cluster {
         , m_size(a.m_size + b.m_size)
         , m_first(a.m_first)
         , m_last(b.m_last)
-        , m_id(clusters_num++)
+        , m_id(overall_clusters_num++)
         , m_loc(barycenter(Locations { a.m_loc, b.m_loc })) {}
 
     [[nodiscard]] auto first() const { return m_first; }
@@ -38,8 +38,8 @@ struct Cluster {
     bool operator<(const Cluster& other) const { return m_id < other.m_id; }
     bool operator==(const Cluster& other) const { return m_id == other.m_id; }
 
-private:
-    static size_t clusters_num; // number of clusters
+//private:
+    static size_t overall_clusters_num; // number of clusters, it's used to give them unique ids
     Cluster* m_left = nullptr;    //  subclusters
     Cluster* m_right = nullptr;   //
     size_t m_size; // cluster size
@@ -77,13 +77,18 @@ struct ClusterStructure {
 
     auto to_geojson() const -> json;
 
-//private:
+    void cluster_from_element(size_t ind, Location loc);
+
+    auto clusters_num() const { return m_clusters_num; }
+
+private:
     const Cluster* m_root = nullptr;
     Buildings m_data;
     Clusters m_clusters {};
     DMatrix<Building> m_dm_buildings;
     matrix<uint64_t> m_dm_clusters;
     std::vector<int64_t> _m_next;
+    size_t m_clusters_num;
 };
 
 #endif //CLUSTERING_HPP

@@ -1,19 +1,19 @@
 #include "graph.hpp"
 #include "clustering.hpp"
 
-size_t Cluster::clusters_num = 0;
+size_t Cluster::overall_clusters_num = 0;
 
 ClusterStructure::ClusterStructure(Buildings&& buildings, DMatrix<Building>&& dm)
     : m_data(buildings)
     , m_dm_buildings(dm)
-    , m_dm_clusters(2 * buildings.size() - 1, 2 * buildings.size() - 1) {
+    , m_dm_clusters(2 * buildings.size() - 1, 2 * buildings.size() - 1)
+    , m_clusters_num(0) {
 
 //        for every building create cluster
     m_clusters.reserve(2 * m_data.size() - 1);
-    _m_next.reserve(2 * m_data.size() - 1);
+    _m_next.resize(2 * m_data.size() - 1);
     for (size_t i = 0; i < m_data.size(); ++i) {
-        m_clusters.emplace_back(Cluster { i, { m_data[i].longitude(), m_data[i].latitude() }});
-        _m_next.emplace_back(-1);
+        cluster_from_element(i, { m_data[i].longitude(), m_data[i].latitude() });
     }
 
 //        create distance matrix for clusters
@@ -73,7 +73,14 @@ ClusterStructure::ClusterStructure(Buildings&& buildings, DMatrix<Building>&& dm
 
 auto ClusterStructure::merge_clusters(size_t id1, size_t id2) -> Cluster {
     _m_next[m_clusters[id1].last()] = m_clusters[id2].first();
+    ++m_clusters_num;
     return Cluster(m_clusters[id1], m_clusters[id2]);
+}
+
+void ClusterStructure::cluster_from_element(size_t ind, Location loc) {
+    m_clusters.emplace_back(ind, loc);
+    _m_next[ind] = -1;
+    ++m_clusters_num;
 }
 
 void ClusterStructure::print_cluster_structure(std::ostream& out, const Cluster* curr_cl,
