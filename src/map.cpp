@@ -57,12 +57,14 @@ auto Map::select_random_houses(size_t num) const -> Buildings {
 };
 
 bool Map::serialize(const std::string& filename) const {
-    return ::graphs::serialize(filename, m_buildings) && m_graph.serialize();
+    std::string cname = ".cache/" + filename + "-map.dmp";
+    return ::graphs::serialize(cname, m_buildings) && m_graph.serialize(filename);
 };
 
 bool Map::deserialize(const std::string& filename) {
-    if (!std::filesystem::exists(filename)) { return false; }
-    return ::graphs::deserialize(filename, m_buildings) && m_graph.deserialize();
+    std::string cname = ".cache/" + filename + "-map.dmp";
+    if (!std::filesystem::exists(cname)) { return false; }
+    return ::graphs::deserialize(cname, m_buildings) && m_graph.deserialize(filename);
 };
 
 auto Map::shortest_paths(Building from, const Buildings& to) const -> Paths {
@@ -228,12 +230,15 @@ auto import_map_from_pbf(const std::string& filename, bool recache) -> std::opti
     using Index = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
     using LocationHandler = osmium::handler::NodeLocationsForWays<Index>;
 
+    // Remove file extension from cache name.
+    std::string cname = filename.substr(0, filename.length() - 4);
+
     /*
      * If using cached map, return.
      */
     if (!recache) {
         Map map {};
-        if (map.deserialize()) { return map; }
+        if (map.deserialize(cname)) { return map; }
         else { return std::nullopt; }
     }
 
@@ -258,13 +263,19 @@ auto import_map_from_pbf(const std::string& filename, bool recache) -> std::opti
 
     // Create map and serialize
     Map map { gh.buildings, gh.routes };
-    map.serialize();
+    map.serialize(cname);
 
     return map;
 }
 
 auto import_map_from_csv(const std::string& filename, bool recache) -> std::optional<Map> {
-    (void) recache;
+    if (!recache) {
+        Map map {};
+        std::string cname = filename.substr(0, filename.length() - 4);
+        if (map.deserialize(cname)) { return map; }
+        else { return std::nullopt; }
+    }
+
     rapidcsv::Document csv(filename, rapidcsv::LabelParams { 0, 0 });
     Graph graph;
 

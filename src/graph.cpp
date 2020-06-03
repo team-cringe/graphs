@@ -22,12 +22,14 @@ bool Graph::add_edge_two_way(Edge&& e, Distance d) noexcept {
 }
 
 bool Graph::serialize(const std::string& filename) const {
-    return ::graphs::serialize(filename, m_data);
+    std::string cname = ".cache/" + filename + "-gph.dmp";
+    return ::graphs::serialize(cname, m_data);
 }
 
 bool Graph::deserialize(const std::string& filename) {
-    if (!std::filesystem::exists(filename)) { return false; }
-    return ::graphs::deserialize(filename, m_data);
+    std::string cname = ".cache/" + filename + "-gph.dmp";
+    if (!std::filesystem::exists(cname)) { return false; }
+    return ::graphs::deserialize(cname, m_data);
 }
 
 auto Graph::dijkstra(Node s) const -> std::pair<ShortestPaths, Trail> {
