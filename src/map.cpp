@@ -18,8 +18,10 @@
 #include <osmium/handler/node_locations_for_ways.hpp>
 #include <osmium/io/pbf_input.hpp>
 
+#include "d99kris/rapidcsv.h"
+
 namespace graphs {
-template<typename F>
+template<typename F> [[maybe_unused]]
 auto Map::select_buildings(F&& functor) const -> Buildings {
     Buildings result {};
     for (const auto& building: m_buildings) {
@@ -138,7 +140,7 @@ Map paths_to_map(const Map& map, const Map::TracedPaths& paths) {
     return Map { buildings, routes };
 }
 
-std::optional<Map> import_map(const std::string& filename, bool recache) {
+auto import_map_from_pbf(const std::string& filename, bool recache) -> std::optional<Map> {
     using NodesMarker = std::unordered_map<std::uint64_t, bool>;
     using NodesLocation = std::unordered_map<Node, Location>;
 
@@ -259,5 +261,24 @@ std::optional<Map> import_map(const std::string& filename, bool recache) {
     map.serialize();
 
     return map;
+}
+
+auto import_map_from_csv(const std::string& filename, bool recache) -> std::optional<Map> {
+    (void) recache;
+    rapidcsv::Document csv(filename, rapidcsv::LabelParams { 0, 0 });
+    Graph graph;
+
+    for (size_t i = 0; i < csv.GetRowCount(); i += 1) {
+        Node from { i };
+        auto close = csv.GetRow<std::uint64_t>(i);
+        for (const auto& j: close) {
+            Node to { j };
+            graph.add_edge_one_way({ from, to });
+        }
+    }
+
+    Map result {{{}}, graph };
+
+    return result;
 }
 } // namespace graphs

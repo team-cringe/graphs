@@ -13,6 +13,9 @@ struct Map {
         : m_buildings(std::move(buildings))
         , m_graph(std::move(graph)) {};
 
+    /**
+     * Pair of Buildings with the Distance between them.
+     */
     struct Path {
         Path(Building from, Building to, Distance distance)
             : m_from(from)
@@ -46,17 +49,17 @@ struct Map {
     /**
      * Select buildings by applying functor to each.
      *
-     * @param functor [](const Building&) { return true; }
+     * @param functor [](const Building&) { return __; }
      * @return Vector of corresponding nodes.
      */
-    template<typename F>
+    template<typename F> [[maybe_unused]]
     auto select_buildings(F&& functor) const -> Buildings;
 
     /**
      * Select N buildings and apply functor to each.
      *
      * @param num Number of building to select.
-     * @param functor [](const Buildings&) { return true; }
+     * @param functor [](const Buildings&) { return __; }
      * @return Vector of corresponding nodes.
      */
     template<typename F>
@@ -73,7 +76,7 @@ struct Map {
     auto shortest_paths(Building from, const Buildings& to) const -> Paths;
 
     /**
-     * Summarize all edges' weights
+     * Summarize all edges' weights.
      */
     auto weights_sum() const -> long double;
 
@@ -89,21 +92,27 @@ private:
 };
 
 /**
- * Convert paths to new map
- *
- * @param map
- * @param paths
- * @return new map
+ * Converts paths to the new Map.
  */
 auto paths_to_map(const Map& map, const Map::TracedPaths& paths) -> Map;
 
 /**
- * Constructs routing graph based on provided OSM geodata.
+ * Constructs routing graph based on provided PBF file with OSM geodata.
  *
- * @param file File with geographic data.
+ * @param file PBF file.
+ * @param recache Object should be constructed from scratch and dumped.
  * @return Constructed routing graph and the list of buildings.
  */
-auto import_map(const std::string& filename, bool recache) -> std::optional<Map>;
+auto import_map_from_pbf(const std::string& filename, bool recache) -> std::optional<Map>;
+
+/**
+ * Construct routing graph based on CSV file with adjacency matrix.
+ *
+ * @param filename CSV file.
+ * @param recache Object should be constructed from scratch and dumped.
+ * @return Constructed routing graph.
+ */
+auto import_map_from_csv(const std::string& filename, bool recache) -> std::optional<Map>;
 } // namespace graphs
 
 #endif // GRAPHS_MAP_HPP

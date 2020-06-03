@@ -15,7 +15,7 @@ set(GRAPHS_SOURCES
         ${SOURCE}/assessment.cpp
         ${SOURCE}/planning.cpp
         ${SOURCE}/main.cpp
-)
+        )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
@@ -29,22 +29,23 @@ target_include_directories(graphs PRIVATE ${INCLUDE})
 
 set_property(TARGET graphs PROPERTY CXX_STANDARD 17)
 
-# Required dynamic-link libraries
+# Required dynamic-link libraries.
 find_package(Osmium REQUIRED COMPONENTS pbf)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Boost REQUIRED serialization)
 
-# Move necessary data files to build directory
+# Move necessary data files to build directory.
+configure_file(data/Graph.csv ${CMAKE_CURRENT_BINARY_DIR}/Graph.csv COPYONLY)
 configure_file(data/NNMap.pbf ${CMAKE_CURRENT_BINARY_DIR}/NNMap.pbf COPYONLY)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     configure_file(data/VNMap.pbf ${CMAKE_CURRENT_BINARY_DIR}/VNMap.pbf COPYONLY)
-endif()
+endif ()
 
 target_compile_options(graphs PRIVATE -Werror -Wall -Wextra)
 if (CMAKE_BUILD_TYPE EQUAL "Release")
     target_compile_options(graphs PRIVATE -O3)
-endif()
+endif ()
 
 target_link_libraries(graphs PUBLIC ${OSMIUM_IO_LIBRARIES}
         ${ZLIB_LIBRARIES}

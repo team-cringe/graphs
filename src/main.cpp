@@ -63,7 +63,7 @@ int main(int argc, const char** argv) {
         facilities = program.get<int>("facilities");
     graphs::Map map;
 
-    if (auto result = graphs::import_map(file, recache)) {
+    if (auto result = graphs::import_map_from_pbf(file, recache)) {
         map = result.value();
     } else {
         std::cerr << "Map not found" << std::endl;

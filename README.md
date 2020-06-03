@@ -23,6 +23,7 @@ Static libraries:
 
 * [p-ranav/argparse](https://github.com/p-ranav/argparse)
 * [nlohmann/json](https://github.com/nlohmann/json)
+* [d99kris/rapidcsv](https://github.com/d99kris/rapidcsv)
 
 ## Build
 
@@ -58,4 +59,3 @@ Map could be re-cached (_e.g., if different map is used_):
 ```bash
 $ graphs 15 30 --recache
 ```
-
