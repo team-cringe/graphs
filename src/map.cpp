@@ -271,9 +271,9 @@ auto import_map_from_csv(const std::string& filename, bool recache) -> std::opti
     for (size_t i = 0; i < csv.GetRowCount(); i += 1) {
         Node from { i };
         auto close = csv.GetRow<std::uint64_t>(i);
-        for (const auto& j: close) {
+        for (size_t j = 0; j < csv.GetColumnCount(); j += 1) {
             Node to { j };
-            graph.add_edge_one_way({ from, to });
+            graph.add_edge_one_way({ from, to }, close[j]);
         }
     }
 
