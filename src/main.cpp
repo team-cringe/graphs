@@ -51,19 +51,19 @@ int main(int argc, const char** argv) {
         exit(0);
     }
 
-    auto recache = program["--recache"] == true
-                   || !fs::exists(".cache/bld.dmp")
-                   || !fs::exists(".cache/nd.dmp");
     if (!fs::exists(".cache")) {
         fs::create_directory(".cache");
     }
-
-    auto file = program.get<std::string>("--file");
+    auto filename = program.get<std::string>("--file");
+    auto cname = filename.substr(0, filename.length() - 4);
+    auto recache = program["--recache"] == true
+                   || !fs::exists(".cache/" + filename + "-map.dmp")
+                   || !fs::exists(".cache/" + filename + "-gph.dmp");
     auto houses = program.get<int>("houses"),
         facilities = program.get<int>("facilities");
     graphs::Map map;
 
-    if (auto result = graphs::import_map_from_pbf(file, recache)) {
+    if (auto result = graphs::import_map_from_pbf(filename, recache)) {
         map = result.value();
     } else {
         std::cerr << "Map not found" << std::endl;
