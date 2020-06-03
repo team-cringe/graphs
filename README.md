@@ -6,7 +6,7 @@ Semester project for the _Graph Theory_ course in _St. Petersburg State Universi
 
 Using data from the nonprofit mapping project _OpenStreetMap_, build a routing graph of one of Russian megalopolises.
 
-For our project we have chosen the city of _[Nizhny Novgorod](https://pbs.twimg.com/media/BG48ENgCEAAIDl9.jpg)_.
+For our project we have chosen the city of _[Nizhny Novgorod](https://www.openstreetmap.org/node/27505889)_.
 
 _M_ random infrastructure facilities (_e.g., hospitals_) and _N_ random houses in the chosen city are selected.
 
