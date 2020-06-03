@@ -12,6 +12,7 @@ set(GRAPHS_SOURCES ${SOURCE}/assessment.cpp
         ${SOURCE}/geojson.cpp
         ${SOURCE}/distance_matrix.cpp
         ${SOURCE}/clustering.cpp
+        ${SOURCE}/color.cpp
 )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
