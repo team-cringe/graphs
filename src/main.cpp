@@ -57,8 +57,8 @@ int main(int argc, const char** argv) {
     auto filename = program.get<std::string>("--file");
     auto cname = filename.substr(0, filename.length() - 4);
     auto recache = program["--recache"] == true
-                   || !fs::exists(".cache/" + filename + "-map.dmp")
-                   || !fs::exists(".cache/" + filename + "-gph.dmp");
+                   || !fs::exists(".cache/" + cname + "-map.dmp")
+                   || !fs::exists(".cache/" + cname + "-gph.dmp");
     auto houses = program.get<int>("houses"),
         facilities = program.get<int>("facilities");
     graphs::Map map;
