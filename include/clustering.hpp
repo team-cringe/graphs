@@ -2,11 +2,13 @@
 #define CLUSTERING_HPP
 
 #include <unordered_set>
+
 #include <boost/numeric/ublas/matrix.hpp>
-#include "distance_matrix.hpp"
+
+#include "dmatrix.hpp"
 #include "geojson.hpp"
 
-using namespace graph;
+using namespace graphs;
 
 struct Cluster {
     Cluster() = delete;

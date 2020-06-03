@@ -1,4 +1,5 @@
 #include "color.hpp"
+
 #include <cmath>
 #include <random>
 #include <limits>

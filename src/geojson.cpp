@@ -1,12 +1,12 @@
+#include "geojson.hpp"
+
 #include <fstream>
 
 #include "nlohmann/json.hpp"
-#include "geojson.hpp"
-#include "graph.hpp"
 
 using nlohmann::json;
 
-json building_to_geojson_point(const graph::Building& building) {
+json building_to_geojson_point(const graphs::Building& building) {
     return json {
         { "type", "Feature" },
         { "properties", {
@@ -19,7 +19,7 @@ json building_to_geojson_point(const graph::Building& building) {
     };
 }
 
-json path_to_geojson(const graph::Map::TracedPath& path) {
+json path_to_geojson(const graphs::Map::TracedPath& path) {
     auto[from, to] = path.ends();
     json way = {
         { "type", "Feature" },

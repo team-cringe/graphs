@@ -1,16 +1,18 @@
+#include "assessment.hpp"
+
 #include <iostream>
 
-#include "graph.hpp"
-
-void assessment(const graph::Map& map, int houses_num, int facilities_num) {
+void assessment(const graphs::Map& map, int houses_num, int facilities_num) {
     auto houses = map.select_random_houses(houses_num);
     auto facilities = map.select_random_facilities(facilities_num);
-
     for (const auto& house: houses) {
-        auto result = map.shortest_paths(house, facilities);
-        for (const auto& path: result) {
-            auto [from, to] = path.ends();
-            std::cout << from.longitude() << ", " << from.latitude() << std::endl;
-        }
+        auto paths = map.shortest_paths(house, facilities);
+        auto closest = std::min_element(paths.cbegin(), paths.cend(),
+                                        [](const auto& a, const auto& b) {
+                                            return a.distance() < b.distance();
+                                        });
+        auto[from, to] = closest->ends();
+        std::cout << "Closest facility from " << from.latitude() << "/" << from.longitude() <<
+                  " is " << to.latitude() << "/" << to.longitude() << std::endl;
     }
 }

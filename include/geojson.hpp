@@ -2,9 +2,10 @@
 #define GEOJSON_HPP
 
 #include "nlohmann/json.hpp"
-#include "graph.hpp"
 
-using namespace graph;
+#include "map.hpp"
+
+using namespace graphs;
 using nlohmann::json;
 
 json building_to_geojson_point(const Building& building);

@@ -1,10 +1,9 @@
-#ifndef DISTANCE_MATRIX_HPP
-#define DISTANCE_MATRIX_HPP
+#ifndef DMATRIX_HPP
+#define DMATRIX_HPP
 
-#include "distance_matrix.hpp"
-#include "graph.hpp"
+#include "map.hpp"
 
-using namespace graph;
+using namespace graphs;
 
 template<typename T>
 using DMatrix = std::unordered_map<std::pair<T, T>, double>;
@@ -30,4 +29,4 @@ struct hash<std::pair<Building, Building>> {
  */
 auto dmatrix_for_buildings(const Map& map, const Buildings& buildings) -> DMatrix<Building>;
 
-#endif //DISTANCE_MATRIX_HPP
+#endif //DMATRIX_HPP

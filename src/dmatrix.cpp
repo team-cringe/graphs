@@ -1,7 +1,6 @@
-#include "distance_matrix.hpp"
-#include "graph.hpp"
+#include "dmatrix.hpp"
 
-using namespace graph;
+using namespace graphs;
 
 auto dmatrix_for_buildings(const Map& map,
                            const Buildings& buildings) -> DMatrix<Building> {

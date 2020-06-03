@@ -5,14 +5,16 @@ set(SOURCE ${PROJECT_SOURCE_DIR}/src)
 set(INCLUDE ${PROJECT_SOURCE_DIR}/include)
 set(DATA ${PROJECT_SOURCE_DIR}/data)
 
-set(GRAPHS_SOURCES ${SOURCE}/assessment.cpp
-        ${SOURCE}/planning.cpp
+set(GRAPHS_SOURCES
         ${SOURCE}/graph.cpp
-        ${SOURCE}/main.cpp
+        ${SOURCE}/map.cpp
         ${SOURCE}/geojson.cpp
-        ${SOURCE}/distance_matrix.cpp
+        ${SOURCE}/dmatrix.cpp
         ${SOURCE}/clustering.cpp
         ${SOURCE}/color.cpp
+        ${SOURCE}/assessment.cpp
+        ${SOURCE}/planning.cpp
+        ${SOURCE}/main.cpp
 )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")

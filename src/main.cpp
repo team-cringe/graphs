@@ -1,10 +1,15 @@
 #include <iostream>
 #include <thread>
+#include <filesystem>
+#include <optional>
 
-#include "graph.hpp"
-#include "argparse.hpp"
+#include "p-ranav/argparse.hpp"
+
+#include "map.hpp"
 #include "assessment.hpp"
 #include "planning.hpp"
+
+namespace fs = std::filesystem;
 
 int main(int argc, const char** argv) {
     argparse::ArgumentParser program { "graphs" };
@@ -23,8 +28,18 @@ int main(int argc, const char** argv) {
     /*
      * Optional arguments.
      */
+    program.add_argument("-f", "--file")
+           .help("path to file with map")
+           .default_value(std::string { "NNMap.pbf" })
+           .nargs(1);
+
     program.add_argument("-l", "--log")
            .help("enable logging")
+           .default_value(false)
+           .implicit_value(true);
+
+    program.add_argument("--recache")
+           .help("recache map")
            .default_value(false)
            .implicit_value(true);
 
@@ -36,9 +51,24 @@ int main(int argc, const char** argv) {
         exit(0);
     }
 
+    auto recache = program["--recache"] == true
+                   || !fs::exists(".cache/bld.dmp")
+                   || !fs::exists(".cache/nd.dmp");
+    if (!fs::exists(".cache")) {
+        fs::create_directory(".cache");
+    }
+
+    auto file = program.get<std::string>("--file");
     auto houses = program.get<int>("houses"),
         facilities = program.get<int>("facilities");
-    auto map = graph::import_map("NNMap.pbf");
+    graphs::Map map;
+
+    if (auto result = graphs::import_map(file, recache)) {
+        map = result.value();
+    } else {
+        std::cerr << "Map not found" << std::endl;
+        return 1;
+    }
 
     /*
      * Start tasks in separate threads.
