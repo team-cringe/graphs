@@ -6,11 +6,12 @@
 
 using nlohmann::json;
 
-json building_to_geojson_point(const graphs::Building& building) {
+json building_to_geojson_point(const graphs::Building& building, Color color) {
     return json {
         { "type", "Feature" },
         { "properties", {
             { "marker-size", "small" },
+            { "marker-color", "#" + color.hex() },
         }},
         { "geometry", {
             { "type", "Point" },
@@ -60,10 +61,12 @@ json paths_and_buildings_to_geojson(const Map::TracedPaths& paths, const Buildin
     return geojson;
 }
 
-json edge_to_geojson(Node from, Node to) {
+json edge_to_geojson(Node from, Node to, Color color = { 0.33, 0.33, 0.33 }) {
     return {
         { "type", "Feature" },
-        { "properties", {}},
+        { "properties", {
+            { "stroke", "#" + color.hex() }
+        }},
         { "geometry", {
             { "type", "LineString" },
             { "coordinates", {
@@ -74,10 +77,12 @@ json edge_to_geojson(Node from, Node to) {
     };
 }
 
-json edge_to_geojson(Building from, Node to) {
+json edge_to_geojson(Building from, Node to, Color color = { 0.33, 0.33, 0.33 }) {
     return {
         { "type", "Feature" },
-        { "properties", {}},
+        { "properties", {
+            { "stroke", "#" + color.hex() }
+        }},
         { "geometry", {
             { "type", "LineString" },
             { "coordinates", {
@@ -88,10 +93,12 @@ json edge_to_geojson(Building from, Node to) {
     };
 }
 
-json edge_to_geojson(Location from, Location to) {
+json edge_to_geojson(Location from, Location to, Color color) {
     return {
         { "type", "Feature" },
-        { "properties", {}},
+        { "properties", {
+            { "stroke", "#" + color.hex() }
+        }},
         { "geometry", {
             { "type", "LineString" },
             { "coordinates", {
