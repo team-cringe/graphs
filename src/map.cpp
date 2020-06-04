@@ -56,13 +56,15 @@ auto Map::select_random_houses(size_t num) const -> Buildings {
     });
 };
 
-bool Map::serialize(const std::string& filename) const {
-    std::string cname = ".cache/" + filename + "-map.dmp";
+bool Map::serialize(const fs::path& filename) const {
+    auto cname = filename;
+    cname.concat("-map.dmp");
     return ::graphs::serialize(cname, m_buildings) && m_graph.serialize(filename);
 };
 
-bool Map::deserialize(const std::string& filename) {
-    std::string cname = ".cache/" + filename + "-map.dmp";
+bool Map::deserialize(const fs::path& filename) {
+    auto cname = filename;
+    cname.concat("-map.dmp");
     if (!std::filesystem::exists(cname)) { return false; }
     return ::graphs::deserialize(cname, m_buildings) && m_graph.deserialize(filename);
 };
@@ -142,7 +144,7 @@ Map paths_to_map(const Map& map, const Map::TracedPaths& paths) {
     return Map { buildings, routes };
 }
 
-auto import_map_from_pbf(const std::string& filename, bool recache) -> std::optional<Map> {
+auto import_map_from_pbf(const fs::path& filename, bool recache) -> std::optional<Map> {
     using NodesMarker = std::unordered_map<std::uint64_t, bool>;
     using NodesLocation = std::unordered_map<Node, Location>;
 
@@ -231,7 +233,7 @@ auto import_map_from_pbf(const std::string& filename, bool recache) -> std::opti
     using LocationHandler = osmium::handler::NodeLocationsForWays<Index>;
 
     // Remove file extension from cache name.
-    std::string cname = filename.substr(0, filename.length() - 4);
+    auto cname = fs::path { ".cache" } /= filename.stem();
 
     /*
      * If using cached map, return.
@@ -268,10 +270,10 @@ auto import_map_from_pbf(const std::string& filename, bool recache) -> std::opti
     return map;
 }
 
-auto import_map_from_csv(const std::string& filename, bool recache) -> std::optional<Map> {
+auto import_map_from_csv(const fs::path& filename, bool recache) -> std::optional<Map> {
     if (!recache) {
         Map map {};
-        std::string cname = filename.substr(0, filename.length() - 4);
+        auto cname = fs::path { ".cache" } /= filename.stem();
         if (map.deserialize(cname)) { return map; }
         else { return std::nullopt; }
     }

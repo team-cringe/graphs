@@ -54,11 +54,11 @@ int main(int argc, const char** argv) {
     if (!fs::exists(".cache")) {
         fs::create_directory(".cache");
     }
-    auto filename = program.get<std::string>("--file");
-    auto cname = filename.substr(0, filename.length() - 4);
+    fs::path filename = program.get<std::string>("--file");
+    auto cname = filename.stem();
     auto recache = program["--recache"] == true
-                   || !fs::exists(".cache/" + cname + "-map.dmp")
-                   || !fs::exists(".cache/" + cname + "-gph.dmp");
+                   || !fs::exists((fs::path { ".cache" } / cname).concat("-map.dmp"))
+                   || !fs::exists((fs::path { ".cache" } / cname).concat("-gph.dmp"));
     auto houses = program.get<int>("houses"),
         facilities = program.get<int>("facilities");
     graphs::Map map;
