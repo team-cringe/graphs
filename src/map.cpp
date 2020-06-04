@@ -134,10 +134,7 @@ Map paths_to_map(const Map& map, const Map::TracedPaths& paths) {
         }
     }
 
-    buildings.reserve(set.size());
-    for (auto b: set) {
-        buildings.push_back(set.extract(b).value());
-    }
+    buildings.insert(buildings.end(), set.begin(), set.end());
 
     return Map { buildings, routes };
 }
