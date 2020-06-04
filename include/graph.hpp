@@ -3,6 +3,8 @@
 
 #include "node.hpp"
 
+namespace fs = std::filesystem;
+
 namespace graphs {
 /**
  * Type for representing shortest paths from one Node to others.
@@ -23,8 +25,8 @@ public:
     bool add_edge_one_way(Edge&& e, Distance d = 0) noexcept;
     bool add_edge_two_way(Edge&& e, Distance d = 0) noexcept;
 
-    bool serialize(const std::string& filename = ".cache/nd.dmp") const;
-    bool deserialize(const std::string& filename = ".cache/nd.dmp");
+    bool serialize(const fs::path& filename) const;
+    bool deserialize(const fs::path& filename);
 
     const auto& nodes() const { return m_data; }
 

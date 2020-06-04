@@ -5,6 +5,8 @@
 #include "building.hpp"
 #include "graph.hpp"
 
+namespace fs = std::filesystem;
+
 namespace graphs {
 struct Map {
     Map() = default;
@@ -80,8 +82,8 @@ struct Map {
      */
     auto weights_sum() const -> long double;
 
-    bool serialize(const std::string& filename = ".cache/bld.dmp") const;
-    bool deserialize(const std::string& filename = ".cache/bld.dmp");
+    bool serialize(const fs::path& filename) const;
+    bool deserialize(const fs::path& filename);
 
     const auto& buildings() const { return m_buildings; }
     const auto& nodes() const { return m_graph.nodes(); }
@@ -103,7 +105,7 @@ auto paths_to_map(const Map& map, const Map::TracedPaths& paths) -> Map;
  * @param recache Object should be constructed from scratch and dumped.
  * @return Constructed routing graph and the list of buildings.
  */
-auto import_map_from_pbf(const std::string& filename, bool recache) -> std::optional<Map>;
+auto import_map_from_pbf(const fs::path& filename, bool recache) -> std::optional<Map>;
 
 /**
  * Construct routing graph based on CSV file with adjacency matrix.
@@ -112,7 +114,7 @@ auto import_map_from_pbf(const std::string& filename, bool recache) -> std::opti
  * @param recache Object should be constructed from scratch and dumped.
  * @return Constructed routing graph.
  */
-auto import_map_from_csv(const std::string& filename, bool recache) -> std::optional<Map>;
+auto import_map_from_csv(const fs::path& filename, bool recache) -> std::optional<Map>;
 } // namespace graphs
 
 #endif // GRAPHS_MAP_HPP

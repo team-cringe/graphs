@@ -21,13 +21,14 @@ bool Graph::add_edge_two_way(Edge&& e, Distance d) noexcept {
     return m_data[from].insert({ to, d }).second && m_data[to].insert({ from, d }).second;
 }
 
-bool Graph::serialize(const std::string& filename) const {
-    std::string cname = ".cache/" + filename + "-gph.dmp";
-    return ::graphs::serialize(cname, m_data);
+bool Graph::serialize(const fs::path& filename) const {
+    auto cname = filename;
+    return ::graphs::serialize(cname.concat("-gph.dmp"), m_data);
 }
 
-bool Graph::deserialize(const std::string& filename) {
-    std::string cname = ".cache/" + filename + "-gph.dmp";
+bool Graph::deserialize(const fs::path& filename) {
+    auto cname = filename;
+    cname.concat("-gph.dmp");
     if (!std::filesystem::exists(cname)) { return false; }
     return ::graphs::deserialize(cname, m_data);
 }
