@@ -18,6 +18,7 @@ Dynamic libraries:
 
 * [osmcode/libosmium](https://github.com/osmcode/libosmium) 
 * [mapbox/protozero](https://github.com/mapbox/protozero)
+* [fmtlib/fmt](https://github.com/fmtlib/fmt)
 
 Static libraries:
 

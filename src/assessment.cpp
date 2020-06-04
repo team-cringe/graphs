@@ -1,6 +1,6 @@
 #include "assessment.hpp"
 
-#include <iostream>
+#include "fmt/format.h"
 
 void assessment(const graphs::Map& map, int houses_num, int facilities_num) {
     auto houses = map.select_random_houses(houses_num);
@@ -12,7 +12,7 @@ void assessment(const graphs::Map& map, int houses_num, int facilities_num) {
                                             return a.distance() < b.distance();
                                         });
         auto[from, to] = closest->ends();
-        std::cout << "Closest facility from " << from.latitude() << "/" << from.longitude() <<
-                  " is " << to.latitude() << "/" << to.longitude() << std::endl;
+        fmt::print("Closest facility from {} is {} with distance {}\n",
+                   from.id(), to.id(), closest->distance());
     }
 }

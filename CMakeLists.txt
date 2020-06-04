@@ -30,6 +30,7 @@ target_include_directories(graphs PRIVATE ${INCLUDE})
 set_property(TARGET graphs PROPERTY CXX_STANDARD 17)
 
 # Required dynamic-link libraries.
+find_package(fmt REQUIRED)
 find_package(Osmium REQUIRED COMPONENTS pbf)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
@@ -47,7 +48,9 @@ if (CMAKE_BUILD_TYPE EQUAL "Release")
     target_compile_options(graphs PRIVATE -O3)
 endif ()
 
-target_link_libraries(graphs PUBLIC ${OSMIUM_IO_LIBRARIES}
+target_link_libraries(graphs PUBLIC
+        fmt::fmt
+        ${OSMIUM_IO_LIBRARIES}
         ${ZLIB_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
         ${Boost_LIBRARIES})
