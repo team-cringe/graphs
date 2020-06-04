@@ -3,6 +3,10 @@
 
 #include "map.hpp"
 
-void planning(const graphs::Map& map, int houses_num, int facilities_num);
+using namespace graphs;
+
+void planning(const Map& map, int houses_num, int facilities_num);
+
+auto shortest_paths_tree(const Map& map, Building facility, const Buildings& buildings) -> Map;
 
 #endif // PLANNING_HPP
