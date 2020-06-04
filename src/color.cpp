@@ -5,17 +5,19 @@
 #include <limits>
 #include <ctime>
 #include <sstream>
+#include <iomanip>
 
 std::string Color::hex() {
     if (r() < 0 or g() < 0 or b() < 0 or r() > 1 or g() > 1 or b() > 1) {
         return std::string { "000000" };
     }
 
-    int red = static_cast<int>(r() * 256);
-    int green = static_cast<int>(g() * 256);
-    int blue = static_cast<int>(b() * 256);
+    int red = static_cast<int>(r() * 255);
+    int green = static_cast<int>(g() * 255);
+    int blue = static_cast<int>(b() * 255);
     std::stringstream stream;
-    stream << std::hex << red << green << blue;
+    stream << std::hex << std::setfill('0') << std::setw(2) << red << std::setw(2) << green
+           << std::setw(2) << blue;
     return stream.str();
 }
 
