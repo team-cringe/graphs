@@ -27,7 +27,7 @@
 \begin{document}	
 	\begin{titlepage}
 	\begin{figure}[t]
-		\centering{\includegraphics[width=0.3\textwidth]{pics/logo.png}}
+		\centering{\includegraphics[width=0.3\textwidth]{pics/uni-logo.png}}
 	\end{figure}
 
 	\begin{center}
@@ -89,7 +89,7 @@
     	Закрытые пути как правило определяют объект \textit{Area} (к нему относятся дома, окольные пути, стены и т. п.).
     	
     	Структуру \textit{Relation} (отношение) мы исключили из рассмотрения, так как используемая нами библиотека не имеет широких возможностей для работы с ней.
-    	Также, объекты этого типа по большей части не предоставляют требуемую нами информацию.    
+    	Также, объекты этого типа по большей части не предоставляют требуемую нами информацию.
     
 	Для работы с данными \textit{OSM} мы использовали библиотеку \textit{Libosmium} \cite{libosm}, которая предоставляет удобный API на языке C++ для работы с объектами \textit{OSM}.
 	
@@ -109,9 +109,9 @@
 	Мы использовали способ, предложенный на форуме \cite{forum} (для простоты здесь и далее из кода убраны обозначения, не связанные с его логикой):
 	
 	\begin{lstlisting}[language=C++]
- unordered_map<uint64_t, bool> marked {};
+unordered_map<uint64_t, bool> marked {};
  
- void way(Way& way) noexcept {
+void way(Way& way) noexcept {
 	if (!way.has_key("highway")) { return; }
 	for (auto& node: way.nodes()) {
 		if (marked.contains(node)) {
@@ -120,10 +120,10 @@
 			marked.insert({ node, false });
 		}
 	}
- }
+}
 	\end{lstlisting}
 	
-	Для каждого пути на карте, мы помечали каждый узел пути, если он встречался более одного раза (таким образом, он лежит на пересечении).
+	Для каждого пути на карте мы помечали каждый узел пути, если он встречался более одного раза (таким образом, он лежит на пересечении).
 	При следующей итерации по каждому пути, мы разделяли путь по узлу, имеющему отметку.
 	Если узел не помечен, то в граф добавляем ребро между предыдущим и текущим узлами.
 	
@@ -135,7 +135,7 @@
 	где $ \Theta $~--- центральный угол, $ \varphi_{1,2} $~--- широты в радианах, $ \lambda_{1,2} $~--- высоты в радианах и $ \eta(\theta) = \sin^2 \left(\frac{\theta}{2}\right) $ для произвольного угла $ \theta $.
 	
 	\begin{lstlisting}[language=C++]
- for (auto& curr: way.nodes()) {
+for (auto& curr: way.nodes()) {
 	if (curr != first && curr != last) {
      	if (marked.at(curr)) {
      		auto d = ... // One-way or two-way.
@@ -144,35 +144,35 @@
 			pred = &curr;
 		}
 	}
- }
+}
 
- auto w = haversine(pred, last), d = ...;
- routes.add_edge({ pred, last }, w, d);
+auto w = haversine(pred, last), d = ...;
+routes.add_edge({ pred, last }, w, d);
  	\end{lstlisting}
  	
 	Структура \texttt{Node} содержит, как и в спецификации, поля уникального идентификатора в \textit{OSM}, широту и высоту.
  	
 	\begin{lstlisting}[language=C++]
- struct Node {
- private:
+struct Node {
+private:
 	using Angle = long double; 
 	uint64_t m_id = 0;
 	Angle m_latitude = 0;
 	Angle m_longitude = 0;
- };
+};
 	\end{lstlisting} 	
  	
  	Граф представлен списком смежности.
  	
  	\begin{lstlisting}[language=C++]
- struct Graph {
- private:
+struct Graph {
+private:
 	using Edge = pair<Node, Node>;
 	using OutEdges = unordered_map<Node, Distance>;
 	using AdjList = unordered_map<Node, OutEdges>;
 
 	AdjList m_data {};
- };
+};
  	\end{lstlisting}
  	
  	Так как и жилые дома, и объекты инфраструктуры определяются в \textit{OSM} как пути, то их сложно связать в одной структуре с графом дорог.
@@ -188,8 +188,8 @@
 	\end{enumerate}
 	
 	\begin{lstlisting}[language=C++]
- struct Building {
- private:
+struct Building {
+private:
 	enum class Type {
 		House,
 		Facility
@@ -200,13 +200,13 @@
 	Angle m_latitude = 0;
 	Angle m_longitude = 0;
 	Node m_closest_node; // Closest road node.
- };
+};
 	\end{lstlisting}
 	
 	Финальная структура, содержащая всю необходимую информацию о карте города, имеет следующий вид:
 	
-	\begin{lstlisting}
- struct Map {
+	\begin{lstlisting}[language=C++]
+struct Map {
 	struct Path {
 	private:
 		Building m_from, m_to;
@@ -218,10 +218,10 @@
 		vector<Node> m_trace;
 	};
 	
- private:
+private:
 	Buildings m_buildings;
 	Graph m_graph;
- };
+};
 	\end{lstlisting}
 	
 	Очевидно, что время составления карты оказывается довольно велико.
@@ -235,24 +235,24 @@
 	Для простоты реализации используем популярную библиотеку \textit{Boost}.
 	
 	\begin{lstlisting}[language=C++]
- template<typename T>
- bool serialize(fs::path& filename, T&& data) {
+template<typename T>
+bool serialize(fs::path& filename, T&& data) {
 	std::ofstream binary { filename };
 	boost::binary_oarchive archive { binary };
 	archive << data;
 	binary.close();
 	return true;
- }
+}
 
- template<typename T>
- bool deserialize(fs::path& filename, T&& data) {
+template<typename T>
+bool deserialize(fs::path& filename, T&& data) {
 	if (!fs::exists(filename)) { return false; }
 	std::ifstream binary { filename };
 	boost::binary_iarchive archive { binary };
 	archive >> data;
 	binary.close();
 	return true;
- }
+}
 	\end{lstlisting}
 	
 	Подход оправдывает себя, так как большая часть карты остается статичной и при добавлении в базу данных новых узлов каждый раз заново обходить все пути не требуется.
