@@ -13,7 +13,7 @@ struct Node {
     explicit Node(std::uint64_t id)
         : m_id(id) {};
 
-    Node(std::uint64_t id, Angle longitude, Angle latitude)
+    Node(std::uint64_t id, Angle latitude, Angle longitude)
         : m_id(id)
         , m_latitude(latitude)
         , m_longitude(longitude) {};
@@ -33,8 +33,8 @@ struct Node {
     void serialize(Archive& archive, const unsigned int& version) {
         (void) version;
         archive & m_id;
-        archive & m_longitude;
         archive & m_latitude;
+        archive & m_longitude;
     }
 
     bool operator==(const Node& other) const { return other.m_id == m_id; }
@@ -53,7 +53,7 @@ using Nodes = std::vector<Node>;
  * Factory function for Node.
  */
 inline auto make_node(const osmium::NodeRef& node) -> Node {
-    return { node.positive_ref(), node.lon(), node.lat() };
+    return { node.positive_ref(), node.lat(), node.lon() };
 }
 } // namespace graphs
 

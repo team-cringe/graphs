@@ -44,8 +44,8 @@ struct Building {
     [[nodiscard]] auto id() const { return m_id; }
     [[nodiscard]] const Node& closest() const { return m_closest_node; }
     [[nodiscard]] Location location() const { return { m_latitude, m_longitude }; }
-    [[nodiscard]] auto longitude() const { return m_longitude; }
     [[nodiscard]] auto latitude() const { return m_latitude; }
+    [[nodiscard]] auto longitude() const { return m_longitude; }
     [[nodiscard]] auto weight() const { return m_weight; }
 
 private:
@@ -56,7 +56,8 @@ private:
 
     std::uint64_t m_id = 0;
     Type m_type = Type::House;
-    Angle m_latitude = 0, m_longitude = 0;
+    Angle m_latitude = 0;
+    Angle m_longitude = 0;
     Distance m_weight = 0;
     Node m_closest_node {};
 };
@@ -69,7 +70,8 @@ private:
  *
  * @param way OSM way that represents building (or you gonna catch runtime error, lol).
  */
-inline auto make_building(const osmium::Way& way, Location location, const Node& closest) -> Building {
+inline auto make_building(const osmium::Way& way, Location location,
+                          const Node& closest) -> Building {
     const auto type = way.tags().get_value_by_key("building");
     const std::vector<std::string> houses =
         { "apartments", "bungalow", "cabin", "detached", "dormitory", "farm", "ger", "hotel",
