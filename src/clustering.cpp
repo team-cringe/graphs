@@ -99,26 +99,12 @@ void ClusterStructure::print_cluster_structure(std::ostream& out, const Cluster*
 auto ClusterStructure::get_elements(size_t id) const -> std::vector<Building> {
     auto cl = m_clusters[id];
     size_t i = cl.first();
-    std::vector<Building> elements(cl.size());
-    while (i != cl.last()) { elements.emplace_back(m_data[i++]); }
+    std::vector<Building> elements;
+    elements.reserve(cl.size());
+    while (i != cl.last()) {
+        elements.emplace_back(m_data[i]);
+        i = _m_next[i];
+    }
     elements.emplace_back(m_data[i]);
     return elements;
-}
-
-auto ClusterStructure::to_geojson() const -> json {
-    json geojson = {
-        { "type", "FeatureCollection" },
-        { "features", {}},
-    };
-
-    for (auto& cluster: clusters()) {
-        if (cluster.left()) {
-            geojson["features"]
-                .emplace_back(edge_to_geojson(cluster.left()->location(), cluster.location()));
-            geojson["features"]
-                .emplace_back(edge_to_geojson(cluster.right()->location(), cluster.location()));
-        }
-    }
-
-    return geojson;
 }

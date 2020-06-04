@@ -137,3 +137,52 @@ json map_to_geojson(const Map& map) {
 
     return geojson;
 }
+
+json cluster_to_geojson(const Cluster& cl, const ClusterStructure& cl_st, Color color) {
+    auto buildings = cl_st.get_elements(cl.id());
+
+    std::cout << cl.size() << "from lol" << buildings.size() << std::endl;
+
+    json geojson = {};
+    for (auto& b: buildings) {
+        geojson.emplace_back(building_to_geojson_point(b, color));
+    }
+
+    return geojson;
+}
+
+json clusters_to_geojson(const Clusters& cls, const ClusterStructure& cl_st, Colors colors) {
+    json geojson = {
+        { "type", "FeatureCollection" },
+        { "features", {}},
+    };
+
+    for (size_t i = 0; i < cls.size(); ++i) {
+        json buildings = cluster_to_geojson(cls[i], cl_st, colors[i]);
+        std::cout << cls[i].size() << "to " << buildings.size() << std::endl;
+
+        for (auto& b: buildings) {
+            geojson["features"].emplace_back(b);
+        }
+    }
+
+    return geojson;
+}
+
+json cluster_structure_to_geojson(const ClusterStructure& cl_st) {
+    json geojson = {
+        { "type", "FeatureCollection" },
+        { "features", {}},
+    };
+
+    for (auto& cluster: cl_st.clusters()) {
+        if (cluster.left()) {
+            geojson["features"]
+                .emplace_back(edge_to_geojson(cluster.left()->location(), cluster.location()));
+            geojson["features"]
+                .emplace_back(edge_to_geojson(cluster.right()->location(), cluster.location()));
+        }
+    }
+
+    return geojson;
+}

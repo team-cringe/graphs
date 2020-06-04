@@ -5,11 +5,12 @@
 
 #include "map.hpp"
 #include "color.hpp"
+#include "clustering.hpp"
 
 using namespace graphs;
 using nlohmann::json;
 
-json building_to_geojson_point(const Building& building, Color color = {0.33, 0.33, 0.33});
+json building_to_geojson_point(const Building& building, Color color = { 0.33, 0.33, 0.33 });
 
 json path_to_geojson(const Map::TracedPath& path);
 
@@ -19,6 +20,12 @@ void dump_to_file(const json& geojson, const std::string& filename = "geojson.ou
 
 json map_to_geojson(const Map& map);
 
-json edge_to_geojson(Location from, Location to, Color color = {0.33, 0.33, 0.33});
+json edge_to_geojson(Location from, Location to, Color color = { 0.33, 0.33, 0.33 });
 
+json cluster_to_geojson(const Cluster&, const ClusterStructure&,
+                        Color color = { 0.33, 0.33, 0.33 });
+
+json clusters_to_geojson(const Clusters& cls, const ClusterStructure& cl_st, Colors colors);
+
+json cluster_structure_to_geojson(const ClusterStructure& cl_st);
 #endif // GEOJSON_HPP

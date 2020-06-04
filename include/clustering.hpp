@@ -6,7 +6,6 @@
 #include <boost/numeric/ublas/matrix.hpp>
 
 #include "dmatrix.hpp"
-#include "geojson.hpp"
 
 using namespace graphs;
 
@@ -14,7 +13,9 @@ struct Cluster {
     Cluster() = delete;
 
     explicit Cluster(size_t first, Location loc)
-        : m_size(1)
+        : m_left(nullptr)
+        , m_right(nullptr)
+        , m_size(1)
         , m_first(first)
         , m_last(first)
         , m_id(overall_clusters_num++)
@@ -42,8 +43,8 @@ struct Cluster {
 
 //private:
     static size_t overall_clusters_num; // number of clusters, it's used to give them unique ids
-    Cluster* m_left = nullptr;    //  subclusters
-    Cluster* m_right = nullptr;   //
+    Cluster* m_left;    //  subclusters
+    Cluster* m_right;   //
     size_t m_size; // cluster size
     size_t m_first; // index of the first cluster element
     size_t m_last; // index of the last cluster element
@@ -76,8 +77,6 @@ struct ClusterStructure {
 
     [[nodiscard]] auto root() const { return m_root; }
     [[nodiscard]] auto clusters() const { return m_clusters; }
-
-    auto to_geojson() const -> json;
 
     void cluster_from_element(size_t ind, Location loc);
 
