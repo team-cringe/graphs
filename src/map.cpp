@@ -170,37 +170,37 @@ auto import_map_from_pbf(const fs::path& filename, bool recache) -> std::optiona
 
         void way(const osmium::Way& way) noexcept {
             if (!way.tags().has_key("highway")) { return; }
+
             bool one_way = way.tags().has_tag("oneway", "yes");
 
             auto first = way.nodes().cbegin();
             auto last = way.nodes().crbegin();
-            auto pred = first;
+            /*
+             * Mrkd denotes the closest marked node,
+             * Pred denotes previous node.
+             */
+            auto mrkd = first, pred = first;
 
-            for (const auto& node: way.nodes()) {
-                Node current { node.positive_ref(), node.lon(), node.lat() };
-                locations.insert({ current, make_pos(node) });
-                if (node.ref() != first->ref() && node.ref() != last->ref()) {
-                    if (marked.at(node.ref())) {
-                        // Split up the way
-                        const auto distance = haversine(make_pos(*pred), make_pos(node));
-                        Node previous { pred->positive_ref(), pred->lon(), pred->lat() };
-                        if (one_way) {
-                            routes.add_edge_one_way({ previous, current }, distance);
-                        } else {
-                            routes.add_edge_two_way({ previous, current }, distance);
-                        }
-                        pred = &node;
+            for (const auto& curr: way.nodes()) {
+                Distance distance = 0;
+                locations.insert({ make_node(curr), make_pos(curr) });
+                if (curr.ref() != first->ref() && curr.ref() != last->ref()) {
+                    if (marked.at(curr.ref())) {
+                        distance += haversine(make_pos(*pred), make_pos(curr));
+                        one_way
+                        ? routes.add_edge_one_way({ make_node(*mrkd), make_node(curr) }, distance)
+                        : routes.add_edge_two_way({ make_node(*mrkd), make_node(curr) }, distance);
+                        mrkd = &curr;
+                    } else {
+                        distance += haversine(make_pos(*pred), make_pos(curr));
                     }
+                    pred = &curr;
                 }
-            }
 
-            Node previous { pred->positive_ref(), pred->lon(), pred->lat() };
-            Node end { last->positive_ref(), last->lon(), last->lat() };
-            const auto distance = haversine(make_pos(*pred), make_pos(*last));
-            if (one_way) {
-                routes.add_edge_one_way({ previous, end }, distance);
-            } else {
-                routes.add_edge_two_way({ previous, end }, distance);
+                distance += haversine(make_pos(*pred), make_pos(*last));
+                one_way
+                ? routes.add_edge_one_way({ make_node(*mrkd), make_node(*last) }, distance)
+                : routes.add_edge_two_way({ make_node(*mrkd), make_node(*last) }, distance);
             }
         }
     };

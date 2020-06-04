@@ -48,6 +48,13 @@ private:
 };
 
 using Nodes = std::vector<Node>;
+
+/**
+ * Factory function for Node.
+ */
+inline auto make_node(const osmium::NodeRef& node) -> Node {
+    return { node.positive_ref(), node.lon(), node.lat() };
+}
 } // namespace graphs
 
 namespace std {
