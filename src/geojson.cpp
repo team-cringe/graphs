@@ -102,8 +102,8 @@ json edge_to_geojson(Location from, Location to, Color color) {
         { "geometry", {
             { "type", "LineString" },
             { "coordinates", {
-                from,
-                to,
+                { from.second, from.first },
+                { to.second, to.first },
             }}
         }}
     };
@@ -178,9 +178,11 @@ json cluster_structure_to_geojson(const ClusterStructure& cl_st) {
     for (auto& cluster: cl_st.clusters()) {
         if (cluster.left()) {
             geojson["features"]
-                .emplace_back(edge_to_geojson(cluster.left()->location(), cluster.location()));
+                .emplace_back(edge_to_geojson(cluster.left()->centroid().location(),
+                                              cluster.centroid().location()));
             geojson["features"]
-                .emplace_back(edge_to_geojson(cluster.right()->location(), cluster.location()));
+                .emplace_back(edge_to_geojson(cluster.right()->centroid().location(),
+                                              cluster.centroid().location()));
         }
     }
 

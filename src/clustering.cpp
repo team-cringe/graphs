@@ -1,19 +1,33 @@
 #include "graph.hpp"
 #include "clustering.hpp"
 
+auto centroid(const Map& map, Locations locs) -> Building {
+    return find_nearest_building(map, barycenter(locs));
+}
+
+auto find_nearest_building(const Map& map, Location loc) -> Building {
+    return *std::min_element(map.buildings().begin(), map.buildings().end(),
+                             [&](const auto& lhs, const auto& rhs) {
+                                 return
+                                     haversine(lhs.location(), loc) <
+                                     haversine(rhs.location(), loc);
+                             });
+}
+
 size_t Cluster::overall_clusters_num = 0;
 
-ClusterStructure::ClusterStructure(Buildings&& buildings, DMatrix<Building>&& dm)
+ClusterStructure::ClusterStructure(const Map& map, Buildings&& buildings, DMatrix<Building>&& dm)
     : m_data(buildings)
     , m_dm_buildings(dm)
     , m_dm_clusters(2 * buildings.size() - 1, 2 * buildings.size() - 1)
-    , m_clusters_num(0) {
+    , m_clusters_num(0)
+    , m_map(map) {
 
 //        for every building create cluster
     m_clusters.reserve(2 * m_data.size() - 1);
     _m_next.resize(2 * m_data.size() - 1);
     for (size_t i = 0; i < m_data.size(); ++i) {
-        cluster_from_element(i, { m_data[i].longitude(), m_data[i].latitude() });
+        cluster_from_element(i, m_data[i]);
     }
 
 //        create distance matrix for clusters
@@ -72,13 +86,24 @@ ClusterStructure::ClusterStructure(Buildings&& buildings, DMatrix<Building>&& dm
 }
 
 auto ClusterStructure::merge_clusters(size_t id1, size_t id2) -> Cluster {
-    _m_next[m_clusters[id1].last()] = m_clusters[id2].first();
+    auto cl1 = m_clusters[id1];
+    auto cl2 = m_clusters[id2];
+    _m_next[cl1.last()] = cl2.first();
+
+    Location loc;
+    loc.first = (cl1.centroid().location().first * cl1.size() +
+                 cl2.centroid().location().first * cl2.size()) / (cl1.size() + cl2.size());
+    loc.second = (cl1.centroid().location().second * cl1.size() +
+                  cl2.centroid().location().second * cl2.size()) / (cl1.size() + cl2.size());
+
+    auto b = find_nearest_building(m_map, loc);
+
     ++m_clusters_num;
-    return Cluster(m_clusters[id1], m_clusters[id2]);
+    return Cluster(m_clusters[id1], m_clusters[id2], b);
 }
 
-void ClusterStructure::cluster_from_element(size_t ind, Location loc) {
-    m_clusters.emplace_back(ind, loc);
+void ClusterStructure::cluster_from_element(size_t ind, Building b) {
+    m_clusters.emplace_back(ind, b);
     _m_next[ind] = -1;
     ++m_clusters_num;
 }

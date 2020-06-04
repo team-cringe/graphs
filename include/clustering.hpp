@@ -9,26 +9,30 @@
 
 using namespace graphs;
 
+auto centroid(const Map& map, Locations locs) -> Building;
+
+auto find_nearest_building(const Map& map, Location loc) -> Building;
+
 struct Cluster {
     Cluster() = delete;
 
-    explicit Cluster(size_t first, Location loc)
+    explicit Cluster(size_t first, Building b)
         : m_left(nullptr)
         , m_right(nullptr)
         , m_size(1)
         , m_first(first)
         , m_last(first)
         , m_id(overall_clusters_num++)
-        , m_loc(move(loc)) {}
+        , m_center(std::move(b)) {}
 
-    explicit Cluster(Cluster& a, Cluster& b)
-        : m_left(&a)
-        , m_right(&b)
-        , m_size(a.m_size + b.m_size)
-        , m_first(a.m_first)
-        , m_last(b.m_last)
+    explicit Cluster(Cluster& c1, Cluster& c2, Building b)
+        : m_left(&c1)
+        , m_right(&c2)
+        , m_size(c1.m_size + c2.m_size)
+        , m_first(c1.m_first)
+        , m_last(c2.m_last)
         , m_id(overall_clusters_num++)
-        , m_loc(barycenter(Locations { a.m_loc, b.m_loc })) {}
+        , m_center(std::move(b)) {}
 
     [[nodiscard]] auto first() const { return m_first; }
     [[nodiscard]] auto last() const { return m_last; }
@@ -36,7 +40,7 @@ struct Cluster {
     [[nodiscard]] auto left() const { return m_left; }
     [[nodiscard]] auto right() const { return m_right; }
     [[nodiscard]] auto id() const { return m_id; }
-    [[nodiscard]] auto location() const { return m_loc; }
+    [[nodiscard]] auto centroid() const { return m_center; }
 
     bool operator<(const Cluster& other) const { return m_id < other.m_id; }
     bool operator==(const Cluster& other) const { return m_id == other.m_id; }
@@ -49,7 +53,7 @@ struct Cluster {
     size_t m_first; // index of the first cluster element
     size_t m_last; // index of the last cluster element
     size_t m_id; // cluster id
-    Location m_loc;
+    Building m_center;
 };
 
 namespace std {
@@ -66,7 +70,7 @@ using boost::numeric::ublas::matrix;
 struct ClusterStructure {
     ClusterStructure() = delete;
 
-    ClusterStructure(Buildings&& buildings, DMatrix<Building>&& dm);
+    ClusterStructure(const Map& map, Buildings&& buildings, DMatrix<Building>&& dm);
 
     auto merge_clusters(size_t id1, size_t id2) -> Cluster;
 
@@ -78,7 +82,7 @@ struct ClusterStructure {
     [[nodiscard]] auto root() const { return m_root; }
     [[nodiscard]] auto clusters() const { return m_clusters; }
 
-    void cluster_from_element(size_t ind, Location loc);
+    void cluster_from_element(size_t ind, Building b);
 
     auto clusters_num() const { return m_clusters_num; }
 
@@ -90,6 +94,7 @@ private:
     matrix<uint64_t> m_dm_clusters;
     std::vector<int64_t> _m_next;
     size_t m_clusters_num;
+    const Map& m_map;
 };
 
 #endif //CLUSTERING_HPP
