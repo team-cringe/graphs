@@ -98,3 +98,11 @@ private:
 };
 
 #endif //CLUSTERING_HPP
+
+/**
+ *
+ * @param cl_st
+ * @param k
+ * @return
+ */
+Clusters get_k_clusters(const ClusterStructure& cl_st, size_t k);

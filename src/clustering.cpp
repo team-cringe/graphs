@@ -133,3 +133,29 @@ auto ClusterStructure::get_elements(size_t id) const -> std::vector<Building> {
     elements.emplace_back(m_data[i]);
     return elements;
 }
+
+Clusters get_k_clusters(const ClusterStructure& cl_st, size_t k) {
+    if (k > cl_st.clusters().size()) {
+        return Clusters {};
+    }
+    struct comp {
+        bool operator()(const Cluster& lhs, const Cluster& rhs) const {
+            return lhs.size() < rhs.size()
+                   ? false
+                   : lhs.size() > rhs.size()
+                     ? true
+                     : lhs.id() < rhs.id();
+        };
+    };
+    std::set<Cluster, comp> clusters;
+    clusters.insert(*cl_st.root());
+
+    while (clusters.size() < k) {
+        auto cl = *clusters.begin();
+        clusters.insert(*(cl.left()));
+        clusters.insert(*(cl.right()));
+        clusters.erase(cl);
+    }
+
+    return Clusters(clusters.begin(), clusters.end());
+}
