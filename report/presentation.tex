@@ -20,6 +20,8 @@
 	basicstyle=\ttfamily
 }
 
+\graphicspath{ {./images/} }
+
 \begin{document}
 
 \title[Теория графов] {Теория графов и её приложения}
@@ -175,6 +177,80 @@
 \frametitle{Алгоритм Дейкстры}
 Нами был реализован алгоритм Дейкстры с временной сложностью $ O(n \log n) $.\\
 Используя алгоритм, несложно как и определить ближайшие объекты, так и построить дерево кратчайших путей.
+\end{frame}
+
+\begin{frame}
+	\frametitle{Иерархическая кластеризация}
+	\begin{itemize}
+		\item вычисляем матрицу расстояний
+		\item из каждого дома делаем кластер
+		\item дальше добавляем новые кластеры путём объдинения двух ближайших, пока не останется только один класс без предка
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Иерархическая кластеризация}
+	\begin{itemize}
+		\item вычисляем матрицу расстояний
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Иерархическая кластеризация}
+	\begin{itemize}
+		\item вычисляем матрицу расстояний
+		\item из каждого дома делаем кластер
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Иерархическая кластеризация}
+	\begin{itemize}
+		\item вычисляем матрицу расстояний
+		\item из каждого дома делаем кластер
+		\item дальше добавляем новые кластеры путём объдинения двух ближайших, пока не останется только один класс без предка
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Матрица расстояний}
+	Матрицу расстояний вычисляем путём запуска алгоритма Дейкстры из каждой вершины.
+\end{frame}
+
+\begin{frame}
+	\frametitle{Пример}
+	Дано 15 домов, будем разбивать их на кластеры, находить длину деревьев кратчайших путей, и сумму кратчайших путей.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{1 кластер; 32,3 км; 12,8 км}
+	\centering
+	\includegraphics[width=0.75\textwidth]{k1}
+\end{frame}
+
+\begin{frame}
+	\frametitle{2 кластера; 13,2 км; 8,2 км}
+	\centering
+	\includegraphics[width=0.75\textwidth]{k2}
+\end{frame}
+
+\begin{frame}
+	\frametitle{3 кластера; 11,3 км; 6,3 км}
+	\centering
+	\includegraphics[width=0.75\textwidth]{k3}
+\end{frame}
+
+\begin{frame}
+	\frametitle{5 кластеров; 4,6 км; 3,9 км}
+	\centering
+	\includegraphics[width=0.75\textwidth]{k5}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Дендрограмма}
+	\centering
+	\includegraphics[width=0.75\textwidth]{dendrogram}
 \end{frame}
 
 \end{document}
