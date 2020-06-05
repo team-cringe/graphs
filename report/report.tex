@@ -204,7 +204,52 @@
 	\lstinputlisting[language=C++]{snippets/paths_to_map.cpp}
 
 	В итоге получили дерево кратчайших путей. Чтобы найти сумму длинн кратчайших путей, надо на шаге, где мы получили \texttt{TracedPaths}, сложить их длины. Для нахождения общей длины дерева нужно просто сложить веса рёбер.
-    
+
+	\subsubsection{Разбиение на кластеры}
+
+	Для разбиения на кластеры мы будем использовать дополнительные структуры: \texttt{Cluster} и \texttt{ClusterStructure}.
+	
+	В \texttt{Cluster} мы храним информацию о кластере: его размер, индексы его элементов, по которым мы можем их найти, и т.д. Так как на каждом шаге метода полной связи мы объединяем 2 кластера, то также будем хранить их.
+
+	В \texttt{ClusterStructure} хранится дерево кластеров и различная информация о нём.
+
+	\lstinputlisting[language=C++]{snippets/clustering/cluster.cpp}
+
+	\lstinputlisting[language=C++]{snippets/clustering/cluster_structure.cpp}
+
+	Также нам потребуется матрица расстояний:
+	\lstinputlisting[language=C++]{snippets/clustering/dmatrix.cpp}
+
+	Её мы заполняем результатами вызова Дейкстры для каждой вершины.
+
+	Теперь перейдём к самой реализации. Кластеризацию мы производим в конструкторе структуры \texttt{ClusterStructure}. Начинаем с того, что для каждой вершины создаём кластер и для кластеров заполняем матрицу расстояний, просто переписывая матрицу расстояний для домов.
+
+	\lstinputlisting[language=C++]{snippets/clustering/cluster_structure_constructor_1.cpp}
+
+	Затем создадим \texttt{unordered\_set}, в котором будем хранить все кластеры, которые пока ещё не находятся в других кластерах. Будем называть их активными кластерами.
+
+	\lstinputlisting[language=C++]{snippets/clustering/cluster_structure_constructor_2.cpp}
+
+	Далее в цикле, пока количество активных кластеров больше одного, будем повторять следующие действия:
+	\begin{enumerate}
+		\item находим активные кластеры, расстояние между которыми минимально;
+		\item объединяем их в новый кластер, находим расстояния между новым кластером и остальными, добавляем их в матрицу расстояний;
+		\item добавляем его в активные кластеры, из активных кластеров удаляем кластеры из первого шага.
+	\end{enumerate}
+
+	Находим минимальное расстояние:
+	\lstinputlisting[language=C++]{snippets/clustering/cluster_structure_constructor_3.cpp}
+	
+	Добавляем новый кластер и расстояния:
+	\lstinputlisting[language=C++]{snippets/clustering/cluster_structure_constructor_4.cpp}
+
+	Добавляем новый кластер в активные кластеры, удаляем старые:
+	\lstinputlisting[language=C++]{snippets/clustering/cluster_structure_constructor_5.cpp}
+
+	После прохождения цикла берём последний добавленный кластер за корень дерева кластеров:
+	\lstinputlisting[language=C++]{snippets/clustering/cluster_structure_constructor_6.cpp}
+
+
     \section{Результаты}\label{section:results}
 	
 	\pagebreak

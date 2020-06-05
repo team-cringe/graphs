@@ -1,0 +1,1 @@
+m_root = &(*m_clusters.rbegin());
