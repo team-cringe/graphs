@@ -8,7 +8,6 @@
 \usepackage{amsmath}
 \usepackage{listings}
 \usepackage[center]{caption}
-% \usepackage[usenames,dvipsnames]{xcolor}
 
 \usetheme{Madrid}
 \usecolortheme{seagull}
@@ -93,36 +92,12 @@
 
 \begin{frame}[fragile]
 \frametitle{Добавление путей}
-\begin{lstlisting}[language=C++]
- unordered_map<uint64_t, bool> marked {};
- 
-void way(const Way& w) noexcept {
-	if (!w.has_key("highway")) { return; }
-	for (const auto& node: w.nodes()) {
-		if (marked.contains(node)) {
-			marked[node] |= true;
-		} else {
-			marked.insert({ node, false });
-		}
-	}
-}
-\end{lstlisting}
+\lstinputlisting[language=C++]{snippets/mark.cpp}
 \end{frame}
 
 \begin{frame}[fragile]
 \frametitle{Добавление путей}
-\begin{lstlisting}[language=C++]
-for (const auto& curr: way.nodes()) {
-	if (curr != first && curr != last) {
-     	if (marked.at(curr)) {
-     		auto d = ...; // One-way or two-way.
-			auto w = haversine(pred, curr);
-			routes.add_edge({ pred, curr }, w, d);
-			pred = &curr;
-		}
-	}
-}
-\end{lstlisting}
+\lstinputlisting[language=C++]{snippets/fill.cpp}
 \end{frame}
 
 \begin{frame}
@@ -137,32 +112,12 @@ for (const auto& curr: way.nodes()) {
 
 \begin{frame}[fragile]
 \frametitle{Структура \texttt{Node}}
-\begin{lstlisting}[language=C++]
-struct Node {
-private:
-	using Angle = long double; 
-	
-	uint64_t m_id = 0;
-	Angle m_latitude = 0;
-	Angle m_longitude = 0;
-};
-\end{lstlisting} 	
+\lstinputlisting[language=C++]{snippets/node.cpp}
 \end{frame}
 
 \begin{frame}[fragile]
 \frametitle{Структура \texttt{Graph}}
-\begin{lstlisting}[language=C++]
-struct Graph {
-private:
-	using Edge = pair<Node, Node>;
-	using OutgoingEdges = unordered_map<Node, 
-										Distance>;
-	using AdjList = unordered_map<Node, 
-								  OutgoingEdges>;
-	
-	AdjList m_data {};
-};
-\end{lstlisting}
+\lstinputlisting[language=C++]{snippets/graph.cpp}
 \end{frame}
 
 \begin{frame}
@@ -177,43 +132,12 @@ private:
 
 \begin{frame}[fragile]
 \frametitle{Структура \texttt{Building}}
-\begin{lstlisting}[language=C++]
-struct Building {
-private:
-	enum class Type {
-		House,
-		Facility
-	};
-
-	uint64_t m_id = 0;
-	Type m_type;
-	Angle m_latitude = 0;
-	Angle m_longitude = 0;
-	Node m_closest_node;
-};
-\end{lstlisting}
+\lstinputlisting[language=C++]{snippets/building.cpp}
 \end{frame}
 
 \begin{frame}[fragile]
 \frametitle{Структура \texttt{Map}}
-\begin{lstlisting}[language=C++]
-struct Map {
-	struct Path {
-	private:
-		Building m_from, m_to;
-		Distance m_distance;
-	};
-
-	struct TracedPath: public Path {
-	private:
-		vector<Node> m_trace;
-	};
-	
-private:
-	vector<Building> m_buildings;
-	Graph m_graph;
-};
-\end{lstlisting}
+\lstinputlisting[language=C++]{snippets/map.cpp}
 \end{frame}
 
 \begin{frame}
@@ -226,31 +150,12 @@ private:
 \begin{frame}[fragile]
 \frametitle{Кэширование}
 Мы обошли проблему, применив кэширование к структуре \texttt{Map}.\\
-\begin{lstlisting}[language=C++]
-template<typename T>
-bool serialize(fs::path& filename, T&& data) {
-	std::ofstream binary { filename };
-	boost::binary_oarchive archive { binary };
-	archive << data;
-	binary.close();
-	return true;
-}
-\end{lstlisting}
+\lstinputlisting[language=C++]{snippets/serialize.cpp}
 \end{frame}
 
 \begin{frame}[fragile]
 \frametitle{Кэширование}
-\begin{lstlisting}[language=C++]
-template<typename T>
-bool deserialize(fs::path& filename, T&& data) {
-	if (!fs::exists(filename)) { return false; }
-	std::ifstream binary { filename };
-	boost::binary_iarchive archive { binary };
-	archive >> data;
-	binary.close();
-	return true;
-}
-\end{lstlisting}
+\lstinputlisting[language=C++]{snippets/deserialize.cpp}
 \end{frame}
 
 \end{document}

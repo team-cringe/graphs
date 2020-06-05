@@ -97,7 +97,7 @@
 
 	\begin{figure}[ht]
 	\centering	
-	\includegraphics[width=0.8\textwidth]{pics/bbbike.png}
+	\includegraphics[width=0.8\textwidth]{images/bbbike.png}
 	\caption{Используемая карта центра Нижнего Новгорода}
 	\label{fig:bbbike}
 	\end{figure}
@@ -109,20 +109,7 @@
 	Мы использовали способ, предложенный на форуме \cite{forum}, что позволило сократить число узлов почти в два раза.
 	Для простоты здесь и далее из кода убраны обозначения, не связанные с его логикой.
 	
-	\begin{lstlisting}[language=C++]
-unordered_map<uint64_t, bool> marked {};
- 
-void way(Way& way) noexcept {
-	if (!way.has_key("highway")) { return; }
-	for (auto& node: way.nodes()) {
-		if (marked.contains(node)) {
-			marked[node] |= true;
-		} else {
-			marked.insert({ node, false });
-		}
-	}
-}
-	\end{lstlisting}
+	\lstinputlisting[language=C++]{snippets/mark.cpp}
 	
 	Для каждого пути на карте мы помечали каждый узел пути, если он встречался более одного раза (таким образом, он лежит на пересечении).
 	При следующей итерации по каждому пути, мы разделяли путь по узлу, имеющему отметку.
@@ -135,46 +122,15 @@ void way(Way& way) noexcept {
 \end{gather*}
 	где $ \Theta $~--- центральный угол, $ \varphi_{1,2} $~--- широты в радианах, $ \lambda_{1,2} $~--- высоты в радианах и $ \eta(\theta) = \sin^2 \left(\frac{\theta}{2}\right) $ для произвольного угла $ \theta $.
 	
-	\begin{lstlisting}[language=C++]
-for (auto& curr: way.nodes()) {
-	if (curr != first && curr != last) {
-     	if (marked.at(curr)) {
-     		auto d = ... // One-way or two-way.
-			auto w = haversine(pred, curr);
-			routes.add_edge({ pred, curr }, w, d);
-			pred = &curr;
-		}
-	}
-}
-
-auto w = haversine(pred, last), d = ...;
-routes.add_edge({ pred, last }, w, d);
- 	\end{lstlisting}
+	\lstinputlisting[language=C++]{snippets/fill.cpp}
  	
 	Структура \texttt{Node} содержит, как и в спецификации, поля уникального идентификатора в \textit{OSM}, широту и высоту.
  	
-	\begin{lstlisting}[language=C++]
-struct Node {
-private:
-	using Angle = long double; 
-	uint64_t m_id = 0;
-	Angle m_latitude = 0;
-	Angle m_longitude = 0;
-};
-	\end{lstlisting} 	
+	\lstinputlisting[language=C++]{snippets/node.cpp}
  	
  	Граф представлен списком смежности.
  	
- 	\begin{lstlisting}[language=C++]
-struct Graph {
-private:
-	using Edge = pair<Node, Node>;
-	using OutEdges = unordered_map<Node, Distance>;
-	using AdjList = unordered_map<Node, OutEdges>;
-
-	AdjList m_data {};
-};
- 	\end{lstlisting}
+ 	\lstinputlisting[language=C++]{snippets/graph.cpp}
  	
  	Так как и жилые дома, и объекты инфраструктуры определяются в \textit{OSM} как пути, то их сложно связать в одной структуре с графом дорог.
  	Для примера, мы могли помещать каждый узел здания в граф и помечать его особым образом, чтобы выделять среди узлов-частей дорог.
@@ -188,42 +144,11 @@ private:
 	\item в структуре \textit{Building} связываем со зданием найденный узел.
 	\end{enumerate}
 	
-	\begin{lstlisting}[language=C++]
-struct Building {
-private:
-	enum class Type {
-		House,
-		Facility
-	};
-
-	uint64_t m_id = 0;
-	Type m_type;
-	Angle m_latitude = 0;
-	Angle m_longitude = 0;
-	Node m_closest_node; // Closest road node.
-};
-	\end{lstlisting}
+	\lstinputlisting[language=C++]{snippets/building.cpp}
 	
 	Финальная структура, содержащая всю необходимую информацию о карте города, имеет следующий вид:
 	
-	\begin{lstlisting}[language=C++]
-struct Map {
-	struct Path {
-	private:
-		Building m_from, m_to;
-		Distance m_distance;
-	};
-
-	struct TracedPath: public Path {
-	private:
-		vector<Node> m_trace;
-	};
-	
-private:
-	Buildings m_buildings;
-	Graph m_graph;
-};
-	\end{lstlisting}
+	\lstinputlisting[language=C++]{snippets/map.cpp}
 	
 	Очевидно, что время составления карты оказывается довольно велико.
 	Во-первых, библиотека \textit{Libosmium} каждый раз производит чтение файла с картой и последующее заполнение собственных объектов данных.
@@ -235,31 +160,15 @@ private:
 	Мы решили эту проблему, применив кэширование к полученной структуре данных \texttt{Map}.
 	Для простоты реализации используем популярную библиотеку \textit{Boost}.
 	
-	\begin{lstlisting}[language=C++]
-template<typename T>
-bool serialize(fs::path& filename, T&& data) {
-	std::ofstream binary { filename };
-	boost::binary_oarchive archive { binary };
-	archive << data;
-	binary.close();
-	return true;
-}
-
-template<typename T>
-bool deserialize(fs::path& filename, T&& data) {
-	if (!fs::exists(filename)) { return false; }
-	std::ifstream binary { filename };
-	boost::binary_iarchive archive { binary };
-	archive >> data;
-	binary.close();
-	return true;
-}
-	\end{lstlisting}
+	\lstinputlisting[language=C++]{snippets/serialize.cpp}
+	\lstinputlisting[language=C++]{snippets/deserialize.cpp}
 	
 	Подход оправдывает себя, так как большая часть карты остается статичной и при добавлении в базу данных новых узлов каждый раз заново обходить все пути не требуется.
 	В итоге, скорость загрузки карты сократилась с нескольких минут до долей секунды (более точные измерения см. в \nameref{section:results}), и граф дорог Нижнего Новгорода построен.
 	
     \subsection{Оценка удобства размещения объектов инфраструктуры}
+    
+    
     
     \subsection{Планирование новых объектов}
     
@@ -267,51 +176,7 @@ bool deserialize(fs::path& filename, T&& data) {
 	
 	\pagebreak
 
-	\begin{thebibliography}{9}
-		\bibitem{osm-main}
-		OSM Contributors.:
-		\textit{OpenStreetMap Project Main Page}.
-		\texttt{https://www.openstreetmap.org/}		
-		
-		\bibitem{osm-wiki}
-		OSM Contributors.:
-		\textit{OSM Wiki}.
-		\texttt{https://wiki.openstreetmap.org/wiki/}	
-		
-		\bibitem{osm-node}
-		OSM Contributors.:
-		\textit{OSM Node}.
-		\texttt{https://wiki.openstreetmap.org/wiki/Node}
-	
-		\bibitem{osm-way}
-		OSM Contributors.:
-		\textit{OSM Way}.
-		\texttt{https://wiki.openstreetmap.org/wiki/Way}
-		
-		\bibitem{libosm}
-		OSMCode Community.:
-		\textit{Libosmium Project Main Page}.
-		\texttt{https://osmcode.org/libosmium/}
-		
-		\bibitem{bbbike}
-		W. Schneider.:
-		\textit{BBBike Extract}.
-		\texttt{https://extract.bbbike.org/}		
-		
-		\bibitem{libosm-code}
-		OSMCode Community.:
-		\textit{Libosmium Project Souce Code}.
-		\textit{https://github.com/osmcode/libosmium}
-		
-		\bibitem{forum}
-		F. Ramm.:
-		\textit{OSM Help}.
-		\texttt{https://help.openstreetmap.org/questions/19213/}
-		
-		\bibitem{haversine}
-		C. Veness.:
-		\textit{Calculate distance and bearing between Latitude/Longitude points}.
-		\texttt{https://www.movable-type.co.uk/scripts/latlong.html}
-	\end{thebibliography}
+	\bibliographystyle{acm}
+	\bibliography{report}
 	
 \end{document}
