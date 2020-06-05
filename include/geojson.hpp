@@ -8,24 +8,51 @@
 #include "clustering.hpp"
 
 using namespace graphs;
-using nlohmann::json;
 
-json building_to_geojson_point(const Building& building, Color color = { 0.33, 0.33, 0.33 });
+namespace geojson {
 
-json path_to_geojson(const Map::TracedPath& path);
+struct Json {
+    auto json() { return m_json; }
+protected:
+    nlohmann::json m_json;
+};
+using Feature = Json;
+using Features = std::vector<Json>;
 
-json paths_and_buildings_to_geojson(const Map::TracedPaths& paths, const Buildings& buildings);
+struct FeatureCollection: Json {
+    FeatureCollection();
+    auto emplace_back(Feature& feature);
+    void insert(Features& features);
+};
 
-void dump_to_file(const json& geojson, const std::string& filename = "geojson.out");
+struct Point: Json {
+    Point() = delete;
+    explicit Point(Location loc, Color color = Color::gray);
+};
 
-json map_to_geojson(const Map& map);
+struct LineString: Json {
+    LineString() = delete;
+    explicit LineString(const Locations& locs, Color color = Color::gray);
+};
 
-json edge_to_geojson(Location from, Location to, Color color = { 0.33, 0.33, 0.33 });
+Point building_to_point(const Building& building, Color color = Color::gray);
+Features buildings_to_features(const Buildings& buildings, Color color = Color::gray);
 
-json cluster_to_geojson(const Cluster&, const ClusterStructure&,
-                        Color color = { 0.33, 0.33, 0.33 });
+LineString path_to_linestring(const Map::TracedPath& path, Color color = Color::gray);
+Features paths_to_features(const Map::TracedPaths& paths, Color color = Color::gray);
 
-json clusters_to_geojson(const Clusters& cls, const ClusterStructure& cl_st, Colors colors);
+Features paths_and_buildings_to_features(const Map::TracedPaths& paths,
+                                         const Buildings& buildings,
+                                         Color color = Color::gray);
 
-json cluster_structure_to_geojson(const ClusterStructure& cl_st);
+Features map_to_features(const Map& map, Color color = Color::gray);
+FeatureCollection map_to_geojson(const Map& map, Color color = Color::gray);
+
+Features cluster_to_features(const Cluster& cl, const ClusterStructure& cl_st,
+                             Color color = Color::gray);
+Features clusters_to_features(const Clusters& cls, const ClusterStructure& cl_st,
+                              Colors colors = Colors());
+Features cluster_structure_to_features(const ClusterStructure& cl_st);
+void dump_to_file(FeatureCollection& collection, const std::string& filename = "output.geojson");
+} // namespace geojson
 #endif // GEOJSON_HPP

@@ -21,6 +21,8 @@ struct Color {
     double& s() { return components[1]; }
     double& v() { return components[2]; }
 
+    static const Color gray;
+
     [[nodiscard]] std::string hex();
     double components[3] { 0, 0, 0 };
 };
