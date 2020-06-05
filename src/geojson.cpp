@@ -141,8 +141,6 @@ json map_to_geojson(const Map& map) {
 json cluster_to_geojson(const Cluster& cl, const ClusterStructure& cl_st, Color color) {
     auto buildings = cl_st.get_elements(cl.id());
 
-    std::cout << cl.size() << "from lol" << buildings.size() << std::endl;
-
     json geojson = {};
     for (auto& b: buildings) {
         geojson.emplace_back(building_to_geojson_point(b, color));
@@ -159,8 +157,7 @@ json clusters_to_geojson(const Clusters& cls, const ClusterStructure& cl_st, Col
 
     for (size_t i = 0; i < cls.size(); ++i) {
         json buildings = cluster_to_geojson(cls[i], cl_st, colors[i]);
-        std::cout << cls[i].size() << "to " << buildings.size() << std::endl;
-
+        
         for (auto& b: buildings) {
             geojson["features"].emplace_back(b);
         }

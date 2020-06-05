@@ -106,3 +106,5 @@ private:
  * @return
  */
 Clusters get_k_clusters(const ClusterStructure& cl_st, size_t k);
+
+Maps clusters_to_maps(const Map& map, const Clusters& cls, const ClusterStructure& cl_st);

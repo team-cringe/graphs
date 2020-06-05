@@ -93,6 +93,8 @@ private:
     Graph m_graph {};
 };
 
+using Maps = std::vector<Map>;
+
 /**
  * Converts paths to the new Map.
  */

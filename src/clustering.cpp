@@ -159,3 +159,14 @@ Clusters get_k_clusters(const ClusterStructure& cl_st, size_t k) {
 
     return Clusters(clusters.begin(), clusters.end());
 }
+
+Maps clusters_to_maps(const Map& map, const Clusters& cls, const ClusterStructure& cl_st) {
+    Maps maps;
+    maps.reserve(cls.size());
+    for (auto& cl: cls) {
+        auto buildings = cl_st.get_elements(cl.id());
+        auto paths = map.shortest_paths_with_trace(cl.centroid(), buildings);
+        maps.emplace_back(paths_to_map(map, paths));
+    }
+    return maps;
+}
