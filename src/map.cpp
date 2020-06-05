@@ -18,6 +18,8 @@
 #include <osmium/handler/node_locations_for_ways.hpp>
 #include <osmium/io/pbf_input.hpp>
 
+#include <fmt/format.h>
+
 #include "d99kris/rapidcsv.h"
 
 /*
@@ -120,6 +122,79 @@ auto Map::weights_sum() const -> long double {
                                                           return lhs + edge.second;
                                                       });
                            });
+}
+
+bool Map::export_to_csv(const fs::path& filename) const {
+    (void) filename;
+    /*
+     * Adjacency list.
+     */
+    {
+        auto csv_name = fs::path { "List-" } += (filename);
+        rapidcsv::Document csv;
+
+        csv.SetRow(-1, std::vector<std::string> { "from", "to", "distance" });
+        size_t num = 0;
+        for (const auto&[from, edge]: m_graph.nodes()) {
+            for (const auto&[to, d]: edge) {
+                csv.SetCell(0, num, from.id());
+                csv.SetCell(1, num, to.id());
+                csv.SetCell(2, num, d);
+                num += 1;
+            }
+        }
+
+        csv.Save(csv_name);
+    }
+
+    /*
+     * Adjacency matrix.
+     */
+    {
+        auto csv_name = fs::path { "Matrix-" } += (filename);
+        std::ofstream file { csv_name };
+        std::unordered_map<uint64_t, size_t> iti; // ID to index.
+
+        size_t num = 1;
+        file << ','; // Cell (0, 0).
+        for (const auto&[node, _]: m_graph.nodes()) {
+            file << node.id() << ','; // Columns `to`.
+            iti[node.id()] = num;
+            num += 1;
+        }
+        file << '\n';
+
+        for (const auto&[from, edge]: m_graph.nodes()) {
+            file << from.id() << ','; // Rows `from`.
+            std::vector<std::string> nodes(num, "");
+            for (const auto&[to, d]: edge) {
+                nodes[iti[to.id()]] = std::to_string(d);
+            }
+            for (size_t i = 0; i < num; i += 1) {
+                file << nodes[i] << ',';
+            }
+            file << '\n';
+        }
+
+        file.close();
+    }
+
+    return true;
+}
+
+bool Map::import_from_csv(const fs::path& filename) {
+    rapidcsv::Document csv(filename, rapidcsv::LabelParams { 0, 0 });
+
+    for (size_t i = 0; i < csv.GetRowCount(); i += 1) {
+        Node from { i };
+        auto close = csv.GetRow<std::uint64_t>(i);
+        for (size_t j = 0; j < csv.GetColumnCount(); j += 1) {
+            Node to { j };
+            m_graph.add_edge_one_way({ from, to }, close[j]);
+        }
+    }
+
+    return true;
 }
 
 Map paths_to_map(const Map& map, const Map::TracedPaths& paths) {
@@ -273,33 +348,5 @@ auto import_map_from_pbf(const fs::path& filename, bool recache) -> std::optiona
     map.serialize(cname);
 
     return map;
-}
-
-auto import_map_from_csv(const fs::path& filename, bool recache) -> std::optional<Map> {
-    if (!recache) {
-        Map map {};
-        auto cname = fs::path { ".cache" } /= filename.stem();
-        if (map.deserialize(cname)) { return map; }
-        else { return std::nullopt; }
-    }
-
-    fs::remove_all(".cache");
-    fs::create_directory(".cache");
-
-    rapidcsv::Document csv(filename, rapidcsv::LabelParams { 0, 0 });
-    Graph graph;
-
-    for (size_t i = 0; i < csv.GetRowCount(); i += 1) {
-        Node from { i };
-        auto close = csv.GetRow<std::uint64_t>(i);
-        for (size_t j = 0; j < csv.GetColumnCount(); j += 1) {
-            Node to { j };
-            graph.add_edge_one_way({ from, to }, close[j]);
-        }
-    }
-
-    Map result {{{}}, graph };
-
-    return result;
 }
 } // namespace graphs

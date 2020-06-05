@@ -9,18 +9,6 @@
 #include "utils.hpp"
 
 namespace graphs {
-bool Graph::add_edge_one_way(Edge&& e, Distance d) noexcept {
-    auto[from, to] = e;
-    if (from == to) { return false; }
-    return m_data[from].insert({ to, d }).second;
-}
-
-bool Graph::add_edge_two_way(Edge&& e, Distance d) noexcept {
-    auto[from, to] = e;
-    if (from == to) { return false; }
-    return m_data[from].insert({ to, d }).second && m_data[to].insert({ from, d }).second;
-}
-
 bool Graph::serialize(const fs::path& filename) const {
     auto cname = filename;
     return ::graphs::serialize(cname.concat("-gph.dmp"), m_data);
@@ -31,6 +19,20 @@ bool Graph::deserialize(const fs::path& filename) {
     cname.concat("-gph.dmp");
     if (!std::filesystem::exists(cname)) { return false; }
     return ::graphs::deserialize(cname, m_data);
+}
+} // namespace graphs
+
+namespace graphs {
+bool Graph::add_edge_one_way(Edge&& e, Distance d) noexcept {
+    auto[from, to] = e;
+    if (from == to) { return false; }
+    return m_data[from].insert({ to, d }).second;
+}
+
+bool Graph::add_edge_two_way(Edge&& e, Distance d) noexcept {
+    auto[from, to] = e;
+    if (from == to) { return false; }
+    return m_data[from].insert({ to, d }).second && m_data[to].insert({ from, d }).second;
 }
 
 auto Graph::dijkstra(Node s) const -> std::pair<ShortestPaths, Trail> {
