@@ -24,14 +24,21 @@ auto shortest_paths_tree(const Map& map, Building facility,
 auto clusters(const Map& map, Buildings& houses, size_t clusters_num) {
     auto dmatrix = dmatrix_for_buildings(map, houses);
     ClusterStructure cl_st(map, Buildings(houses), move(dmatrix));
+
+    auto features = geojson::cluster_structure_to_features(cl_st);
+    auto collection = geojson::FeatureCollection();
+    collection.insert(features);
+    geojson::dump_to_file(collection, "dendrogram.geojson");
+
     auto clusters = get_k_clusters(cl_st, clusters_num);
     Colors colors = generate_colors(clusters.size());
-    auto collection = geojson::FeatureCollection();
+
+    collection = geojson::FeatureCollection();
     double sp_sum = 0, spt_sum = 0;
     for (size_t i = 0; i < clusters.size(); ++i) {
         houses = cl_st.get_elements(clusters[i].id());
         auto[tree, shortest_paths_sum] = shortest_paths_tree(map, clusters[i].centroid(), houses);
-        auto features = geojson::map_to_features(tree, colors[i]);
+        features = geojson::map_to_features(tree, colors[i]);
         collection.insert(features);
         std::cout << "Cluster " << clusters[i].id() << std::endl;
         std::cout << "Shortest paths sum: " << shortest_paths_sum << std::endl;
