@@ -9,15 +9,14 @@ namespace graphs {
 struct Building {
     Building() = default;
 
-    Building(std::uint64_t id, Location position, Distance weight, const Node& closest_node,
-             unsigned char type)
+    Building(std::uint64_t id, Location position, const Node& closest_node, unsigned char type)
         : m_id(id)
-        , m_weight(weight)
         , m_closest_node(closest_node) {
         m_latitude = position.first;
         m_longitude = position.second;
         if (type == 0) { m_type = Type::House; }
-        else { m_type = Type::Facility; }
+        else if (type == 1) { m_type = Type::Facility; }
+        else { m_type = Type::Other; }
     }
 
     bool operator==(const Building& other) const { return m_id == other.m_id; }
@@ -30,7 +29,6 @@ struct Building {
         archive & m_type;
         archive & m_latitude;
         archive & m_longitude;
-        archive & m_weight;
         archive & m_closest_node;
     }
 
@@ -40,25 +38,27 @@ struct Building {
     [[nodiscard]]
     [[maybe_unused]]
     bool is_facility() const { return m_type == Type::Facility; }
+    [[nodiscard]]
+    [[maybe_unused]]
+    bool is_other() const { return m_type == Type::Other; }
 
     [[nodiscard]] auto id() const { return m_id; }
     [[nodiscard]] const Node& closest() const { return m_closest_node; }
     [[nodiscard]] Location location() const { return { m_latitude, m_longitude }; }
     [[nodiscard]] auto latitude() const { return m_latitude; }
     [[nodiscard]] auto longitude() const { return m_longitude; }
-    [[nodiscard]] auto weight() const { return m_weight; }
 
 private:
     enum class Type {
         House,
-        Facility
+        Facility,
+        Other
     };
 
     std::uint64_t m_id = 0;
     Type m_type = Type::House;
     Angle m_latitude = 0;
     Angle m_longitude = 0;
-    Distance m_weight = 0;
     Node m_closest_node {};
 };
 
@@ -75,11 +75,17 @@ inline auto make_building(const osmium::Way& way, Location location,
     const auto type = way.tags().get_value_by_key("building");
     const std::vector<std::string> houses =
         { "apartments", "bungalow", "cabin", "detached", "dormitory", "farm", "ger", "hotel",
-          "house", "houseboat", "residential", " semidetached_house", "static_caravan", "terrace" };
-    for (const auto& house: houses) {
-        if (type == house) { return Building { way.positive_id(), location, 0, closest, 0 }; }
+          "house", "houseboat", "residential", "semidetached_house", "static_caravan", "terrace" };
+    const std::vector<std::string> facilities =
+        { "fire_station", "hospital", "retail", "kiosk", "supermarket" };
+
+    for (const auto& h: houses) {
+        if (type == h) { return Building { way.positive_id(), location, closest, 0 }; }
     }
-    return Building { way.positive_id(), location, 0, closest, 1 };
+    for (const auto& f: facilities) {
+        if (type == f) { return Building { way.positive_id(), location, closest, 1 }; }
+    }
+    return Building { way.positive_id(), location, closest, 2 };
 }
 
 using Buildings = std::vector<Building>;
@@ -96,7 +102,6 @@ struct hash<graphs::Building> {
         hash_combine(seed, hash_value(b.id()));
         hash_combine(seed, hash_value(b.latitude()));
         hash_combine(seed, hash_value(b.longitude()));
-        hash_combine(seed, hash_value(b.weight()));
         return seed;
     }
 };
