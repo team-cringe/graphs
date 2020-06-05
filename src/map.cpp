@@ -20,6 +20,24 @@
 
 #include "d99kris/rapidcsv.h"
 
+/*
+ * Map serialization.
+ */
+namespace graphs {
+bool Map::serialize(const fs::path& filename) const {
+    auto cname = filename;
+    cname.concat("-map.dmp");
+    return ::graphs::serialize(cname, m_buildings) && m_graph.serialize(filename);
+};
+
+bool Map::deserialize(const fs::path& filename) {
+    auto cname = filename;
+    cname.concat("-map.dmp");
+    if (!std::filesystem::exists(cname)) { return false; }
+    return ::graphs::deserialize(cname, m_buildings) && m_graph.deserialize(filename);
+};
+} // namespace graphs
+
 namespace graphs {
 template<typename F> [[maybe_unused]]
 auto Map::select_buildings(F&& functor) const -> Buildings {
@@ -54,19 +72,6 @@ auto Map::select_random_houses(size_t num) const -> Buildings {
     return select_random_buildings(num, [](const auto& b) {
         return b.is_house();
     });
-};
-
-bool Map::serialize(const fs::path& filename) const {
-    auto cname = filename;
-    cname.concat("-map.dmp");
-    return ::graphs::serialize(cname, m_buildings) && m_graph.serialize(filename);
-};
-
-bool Map::deserialize(const fs::path& filename) {
-    auto cname = filename;
-    cname.concat("-map.dmp");
-    if (!std::filesystem::exists(cname)) { return false; }
-    return ::graphs::deserialize(cname, m_buildings) && m_graph.deserialize(filename);
 };
 
 auto Map::shortest_paths(Building from, const Buildings& to) const -> Paths {
@@ -241,6 +246,9 @@ auto import_map_from_pbf(const fs::path& filename, bool recache) -> std::optiona
         else { return std::nullopt; }
     }
 
+    fs::remove_all(".cache");
+    fs::create_directory(".cache");
+
     osmium::io::File file { filename };
     Index index;
     osmium::io::Reader cr { file }, fr { file }, gr { file };
@@ -274,6 +282,9 @@ auto import_map_from_csv(const fs::path& filename, bool recache) -> std::optiona
         if (map.deserialize(cname)) { return map; }
         else { return std::nullopt; }
     }
+
+    fs::remove_all(".cache");
+    fs::create_directory(".cache");
 
     rapidcsv::Document csv(filename, rapidcsv::LabelParams { 0, 0 });
     Graph graph;
