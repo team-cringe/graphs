@@ -14,8 +14,6 @@ auto find_nearest_building(const Map& map, Location loc) -> Building {
                              });
 }
 
-size_t Cluster::overall_clusters_num = 0;
-
 ClusterStructure::ClusterStructure(const Map& map, Buildings&& buildings, DMatrix<Building>&& dm)
     : m_data(buildings)
     , m_dm_buildings(dm)
@@ -98,14 +96,12 @@ auto ClusterStructure::merge_clusters(size_t id1, size_t id2) -> Cluster {
 
     auto b = find_nearest_building(m_map, loc);
 
-    ++m_clusters_num;
-    return Cluster(m_clusters[id1], m_clusters[id2], b);
+    return Cluster(m_clusters[id1], m_clusters[id2], b, m_clusters_num++);
 }
 
 void ClusterStructure::cluster_from_element(size_t ind, Building b) {
-    m_clusters.emplace_back(ind, b);
+    m_clusters.emplace_back(ind, b, m_clusters_num++);
     _m_next[ind] = -1;
-    ++m_clusters_num;
 }
 
 void ClusterStructure::print_cluster_structure(std::ostream& out, const Cluster* curr_cl,

@@ -16,22 +16,22 @@ auto find_nearest_building(const Map& map, Location loc) -> Building;
 struct Cluster {
     Cluster() = delete;
 
-    explicit Cluster(size_t first, Building b)
+    explicit Cluster(size_t first, Building b, size_t id)
         : m_left(nullptr)
         , m_right(nullptr)
         , m_size(1)
         , m_first(first)
         , m_last(first)
-        , m_id(overall_clusters_num++)
+        , m_id(id)
         , m_center(std::move(b)) {}
 
-    explicit Cluster(Cluster& c1, Cluster& c2, Building b)
+    explicit Cluster(Cluster& c1, Cluster& c2, Building b, size_t id)
         : m_left(&c1)
         , m_right(&c2)
         , m_size(c1.m_size + c2.m_size)
         , m_first(c1.m_first)
         , m_last(c2.m_last)
-        , m_id(overall_clusters_num++)
+        , m_id(id)
         , m_center(std::move(b)) {}
 
     [[nodiscard]] auto first() const { return m_first; }
@@ -45,8 +45,7 @@ struct Cluster {
     bool operator<(const Cluster& other) const { return m_id < other.m_id; }
     bool operator==(const Cluster& other) const { return m_id == other.m_id; }
 
-//private:
-    static size_t overall_clusters_num; // number of clusters, it's used to give them unique ids
+private:
     Cluster* m_left;    //  subclusters
     Cluster* m_right;   //
     size_t m_size; // cluster size
