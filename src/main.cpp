@@ -74,8 +74,8 @@ int main(int argc, const char** argv) {
      * Start tasks in separate threads.
      */
     auto first = std::thread { assessment, std::ref(map), houses, facilities };
-    auto second = std::thread { planning, std::ref(map), houses, facilities };
+    // auto second = std::thread { planning, std::ref(map), houses, facilities };
 
     first.join();
-    second.join();
+    // second.join();
 };
