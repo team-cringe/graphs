@@ -1,13 +1,23 @@
 #include "geojson.hpp"
-
 #include <fstream>
 
-#include "nlohmann/json.hpp"
-
-using nlohmann::json;
-
-json building_to_geojson_point(const graphs::Building& building, Color color) {
-    return json {
+namespace geojson {
+FeatureCollection::FeatureCollection() {
+    m_json = {
+        { "type", "FeatureCollection" },
+        { "features", {}},
+    };
+}
+auto FeatureCollection::emplace_back(Feature& feature) {
+    return m_json["features"].emplace_back(feature.json());
+}
+void FeatureCollection::insert(Features& features) {
+    for (auto& feature: features) {
+        emplace_back(feature);
+    }
+}
+Point::Point(Location loc, Color color) {
+    m_json = {
         { "type", "Feature" },
         { "properties", {
             { "marker-size", "small" },
@@ -15,173 +25,124 @@ json building_to_geojson_point(const graphs::Building& building, Color color) {
         }},
         { "geometry", {
             { "type", "Point" },
-            { "coordinates", { building.longitude(), building.latitude() }}
+            { "coordinates", { loc.second, loc.first }}
         }}
     };
 }
-
-json path_to_geojson(const graphs::Map::TracedPath& path) {
-    auto[from, to] = path.ends();
-    json way = {
-        { "type", "Feature" },
-        { "properties", {}},
-        { "geometry", {
-            { "type", "LineString" },
-            { "coordinates", {
-                { from.longitude(), from.latitude() }
-            }}
-        }}
-    };
-
-    for (const auto& node: path.path()) {
-        way["geometry"]["coordinates"].push_back({ node.longitude(), node.latitude() });
-    }
-
-    way["geometry"]["coordinates"].push_back({ to.longitude(), to.latitude() });
-
-    return way;
-}
-
-json paths_and_buildings_to_geojson(const Map::TracedPaths& paths, const Buildings& buildings) {
-    json geojson = {
-        { "type", "FeatureCollection" },
-        { "features", {}},
-    };
-
-    for (auto& building: buildings) {
-        auto point = building_to_geojson_point(building);
-        geojson["features"].push_back(point);
-    }
-
-    for (const auto& path: paths) {
-        auto path_geojson = path_to_geojson(path);
-        geojson["features"].push_back(path_geojson);
-    }
-
-    return geojson;
-}
-
-json edge_to_geojson(Node from, Node to, Color color = { 0.33, 0.33, 0.33 }) {
-    return {
+LineString::LineString(const Locations& locs, Color color) {
+    m_json = {
         { "type", "Feature" },
         { "properties", {
-            { "stroke", "#" + color.hex() }
+            { "stroke", "#" + color.hex() },
         }},
         { "geometry", {
             { "type", "LineString" },
-            { "coordinates", {
-                { from.longitude(), from.latitude() },
-                { to.longitude(), to.latitude() },
-            }}
+            { "coordinates", {}},
         }}
     };
-}
 
-json edge_to_geojson(Building from, Node to, Color color = { 0.33, 0.33, 0.33 }) {
-    return {
-        { "type", "Feature" },
-        { "properties", {
-            { "stroke", "#" + color.hex() }
-        }},
-        { "geometry", {
-            { "type", "LineString" },
-            { "coordinates", {
-                { from.longitude(), from.latitude() },
-                { to.longitude(), to.latitude() },
-            }}
-        }}
-    };
+    for (auto& loc: locs) {
+        m_json["geometry"]["coordinates"]
+            .emplace_back(nlohmann::json { loc.second, loc.first });
+    }
 }
-
-json edge_to_geojson(Location from, Location to, Color color) {
-    return {
-        { "type", "Feature" },
-        { "properties", {
-            { "stroke", "#" + color.hex() }
-        }},
-        { "geometry", {
-            { "type", "LineString" },
-            { "coordinates", {
-                { from.second, from.first },
-                { to.second, to.first },
-            }}
-        }}
-    };
+Point building_to_point(const Building& building, Color color) {
+    return Point(building.location(), color);
 }
-
-void dump_to_file(const json& geojson, const std::string& filename) {
-    std::ofstream outfile(filename);
-    outfile << geojson.dump(4);
+Features buildings_to_features(const Buildings& buildings, Color color) {
+    return std::accumulate(buildings.begin(), buildings.end(), Features(),
+                           [&](auto lhs, const auto& b) {
+                               lhs.emplace_back(static_cast<Feature>(Point(b.location(), color)));
+                               return lhs;
+                           });
 }
-
-json map_to_geojson(const Map& map) {
-    json geojson = {
-        { "type", "FeatureCollection" },
-        { "features", {}},
-    };
+LineString path_to_linestring(const Map::TracedPath& path, Color color) {
+    Locations locs = std::accumulate(path.path().begin(), path.path().end(), Locations(),
+                                     [](auto lhs, const auto& node) {
+                                         lhs.emplace_back(node.location());
+                                         return lhs;
+                                     });
+    return LineString(locs, color);
+}
+Features paths_to_features(const Map::TracedPaths& paths, Color color) {
+    Features linestrings =
+        std::accumulate(paths.begin(), paths.end(), Features(), [&](auto lhs, const auto& path) {
+            lhs.emplace_back(path_to_linestring(path, color));
+            return lhs;
+        });
+    return linestrings;
+}
+Features map_to_features(const Map& map, Color color) {
+    auto features = Features();
 
     for (auto& building: map.buildings()) {
-        auto point = building_to_geojson_point(building);
-        geojson["features"].push_back(point);
-
-        auto edge = edge_to_geojson(building, building.closest());
-        geojson["features"].push_back(edge);
+        auto point = building_to_point(building, color);
+        features.emplace_back(point);
+        auto edge =
+            LineString(Locations { building.location(), building.closest().location() }, color);
+        features.emplace_back(edge);
     }
 
     for (const auto&[node, edges]: map.nodes()) {
         for (const auto& edge: edges) {
-            auto edge_geojson = edge_to_geojson(node, edge.first);
-            geojson["features"].push_back(edge_geojson);
+            auto edge_geojson =
+                LineString(Locations { node.location(), edge.first.location() }, color);
+            features.emplace_back(edge_geojson);
         }
     }
 
-    return geojson;
+    return features;
 }
-
-json cluster_to_geojson(const Cluster& cl, const ClusterStructure& cl_st, Color color) {
-    auto buildings = cl_st.get_elements(cl.id());
-
-    json geojson = {};
-    for (auto& b: buildings) {
-        geojson.emplace_back(building_to_geojson_point(b, color));
-    }
-
-    return geojson;
+FeatureCollection map_to_geojson(const Map& map, Color color) {
+    auto features = map_to_features(map, color);
+    auto collection = FeatureCollection();
+    collection.insert(features);
+    return collection;
 }
-
-json clusters_to_geojson(const Clusters& cls, const ClusterStructure& cl_st, Colors colors) {
-    json geojson = {
-        { "type", "FeatureCollection" },
-        { "features", {}},
-    };
-
-    for (size_t i = 0; i < cls.size(); ++i) {
-        json buildings = cluster_to_geojson(cls[i], cl_st, colors[i]);
-        
-        for (auto& b: buildings) {
-            geojson["features"].emplace_back(b);
+Features cluster_to_features(const Cluster& cl, const ClusterStructure& cl_st, Color color) {
+    auto elements = cl_st.get_elements(cl.id());
+    return buildings_to_features(elements, color);
+}
+Features clusters_to_features(const Clusters& cls, const ClusterStructure& cl_st, Colors colors) {
+    auto features = Features();
+    if (colors.empty()) {
+        for (auto& cl: cls) {
+            auto features_new = cluster_to_features(cl, cl_st);
+            features.insert(features.end(), features_new.begin(), features.end());
+        }
+    } else {
+        for (size_t i = 0; i < cls.size(); ++i) {
+            auto features_new = cluster_to_features(cls[i], cl_st, colors[i]);
+            features.insert(features.end(), features_new.begin(), features.end());
         }
     }
-
-    return geojson;
+    return features;
 }
-
-json cluster_structure_to_geojson(const ClusterStructure& cl_st) {
-    json geojson = {
-        { "type", "FeatureCollection" },
-        { "features", {}},
-    };
+void dump_to_file(FeatureCollection& collection, const std::string& filename) {
+    std::ofstream outfile(filename);
+    outfile << collection.json().dump(4);
+}
+Features cluster_structure_to_features(const ClusterStructure& cl_st) {
+    auto features = Features();
 
     for (auto& cluster: cl_st.clusters()) {
         if (cluster.left()) {
-            geojson["features"]
-                .emplace_back(edge_to_geojson(cluster.left()->centroid().location(),
-                                              cluster.centroid().location()));
-            geojson["features"]
-                .emplace_back(edge_to_geojson(cluster.right()->centroid().location(),
-                                              cluster.centroid().location()));
+            features.emplace_back(LineString(Locations { cluster.left()->centroid().location(),
+                                                         cluster.centroid().location() }));
+            features.emplace_back(LineString(Locations { cluster.right()->centroid().location(),
+                                                         cluster.centroid().location() }));
         }
     }
 
-    return geojson;
+    return features;
 }
+Features paths_and_buildings_to_features(const Map::TracedPaths& paths,
+                                         const Buildings& buildings, Color color) {
+    auto features = Features();
+    auto features_new = paths_to_features(paths, color);
+    features.insert(features.end(), features_new.begin(), features_new.end());
+    features_new = buildings_to_features(buildings, color);
+    features.insert(features.end(), features_new.begin(), features_new.end());
+    return features;
+}
+} // namespace geojson
