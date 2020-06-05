@@ -85,9 +85,6 @@ struct Map {
     bool serialize(const fs::path& filename) const;
     bool deserialize(const fs::path& filename);
 
-    bool export_to_csv(const fs::path& filename) const;
-    bool import_from_csv(const fs::path& filename);
-
     const auto& buildings() const { return m_buildings; }
     const auto& nodes() const { return m_graph.nodes(); }
 
@@ -111,6 +108,22 @@ auto paths_to_map(const Map& map, const Map::TracedPaths& paths) -> Map;
  * @return Constructed routing graph and the list of buildings.
  */
 auto import_map_from_pbf(const fs::path& filename, bool recache) -> std::optional<Map>;
+
+/**
+ * Import adjacency matrix from .csv file.
+ *
+ * @param filename CSV file.
+ * @return Constructed graph without buildings.
+ */
+auto import_map_from_csv(const fs::path& filename) -> Map;
+
+/**
+ * Write map's inner graph as adjacency matrix and list to separate CSV files.
+ *
+ * @param filename CSV file.
+ * @return Success.
+ */
+bool export_map_to_csv(const Map& map, const fs::path& filename);
 } // namespace graphs
 
 #endif // GRAPHS_MAP_HPP

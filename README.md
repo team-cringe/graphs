@@ -60,3 +60,9 @@ Map could be re-cached (_e.g., if different map is used_):
 ```bash
 $ graphs 15 30 --recache
 ```
+
+Graph could be exported to .csv (_both as an adjacency matrix and as a list_):
+
+```bash
+$ graphs 15 30 --export
+```

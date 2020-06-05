@@ -18,8 +18,6 @@
 #include <osmium/handler/node_locations_for_ways.hpp>
 #include <osmium/io/pbf_input.hpp>
 
-#include <fmt/format.h>
-
 #include "d99kris/rapidcsv.h"
 
 /*
@@ -124,8 +122,7 @@ auto Map::weights_sum() const -> long double {
                            });
 }
 
-bool Map::export_to_csv(const fs::path& filename) const {
-    (void) filename;
+bool export_map_to_csv(const Map& map, const fs::path& filename) {
     /*
      * Adjacency list.
      */
@@ -135,7 +132,7 @@ bool Map::export_to_csv(const fs::path& filename) const {
 
         csv.SetRow(-1, std::vector<std::string> { "from", "to", "distance" });
         size_t num = 0;
-        for (const auto&[from, edge]: m_graph.nodes()) {
+        for (const auto&[from, edge]: map.nodes()) {
             for (const auto&[to, d]: edge) {
                 csv.SetCell(0, num, from.id());
                 csv.SetCell(1, num, to.id());
@@ -157,14 +154,14 @@ bool Map::export_to_csv(const fs::path& filename) const {
 
         size_t num = 1;
         file << ','; // Cell (0, 0).
-        for (const auto&[node, _]: m_graph.nodes()) {
+        for (const auto&[node, _]: map.nodes()) {
             file << node.id() << ','; // Columns `to`.
             iti[node.id()] = num;
             num += 1;
         }
         file << '\n';
 
-        for (const auto&[from, edge]: m_graph.nodes()) {
+        for (const auto&[from, edge]: map.nodes()) {
             file << from.id() << ','; // Rows `from`.
             std::vector<std::string> nodes(num, "");
             for (const auto&[to, d]: edge) {
@@ -182,19 +179,20 @@ bool Map::export_to_csv(const fs::path& filename) const {
     return true;
 }
 
-bool Map::import_from_csv(const fs::path& filename) {
+auto import_map_from_csv(const fs::path& filename) -> Map {
     rapidcsv::Document csv(filename, rapidcsv::LabelParams { 0, 0 });
+    Graph graph {};
 
     for (size_t i = 0; i < csv.GetRowCount(); i += 1) {
         Node from { i };
         auto close = csv.GetRow<std::uint64_t>(i);
         for (size_t j = 0; j < csv.GetColumnCount(); j += 1) {
             Node to { j };
-            m_graph.add_edge_one_way({ from, to }, close[j]);
+            graph.add_edge_one_way({ from, to }, close[j]);
         }
     }
 
-    return true;
+    return Map {{}, graph };
 }
 
 Map paths_to_map(const Map& map, const Map::TracedPaths& paths) {
