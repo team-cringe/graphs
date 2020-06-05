@@ -158,4 +158,23 @@
 \lstinputlisting[language=C++]{snippets/deserialize.cpp}
 \end{frame}
 
+\subsection{Оценка удобства размещения объектов инфраструктуры}
+\begin{frame}
+\frametitle{Задача}
+Требовалось выбрать $ M $ объектов инфраструктуры и $ N $ жилых зданий и оценить удобство их размещения, используя расстояние как метрику.
+\lstinputlisting[language=C++]{snippets/categories.cpp}
+\end{frame}
+    
+\begin{frame}
+\frametitle{Выбор ближайшего узла}
+Для каждого здания запоминаем ближайший узел.
+\lstinputlisting[language=C++]{snippets/closest.cpp}
+\end{frame}
+
+\begin{frame}
+\frametitle{Алгоритм Дейкстры}
+Нами был реализован алгоритм Дейкстры с временной сложностью $ O(n \log n) $.\\
+Используя алгоритм, несложно как и определить ближайшие объекты, так и построить дерево кратчайших путей.
+\end{frame}
+
 \end{document}
