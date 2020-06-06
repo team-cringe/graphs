@@ -3,7 +3,7 @@
 \usepackage[T2A]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[russian]{babel}
-
+\usepackage{subcaption}
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{indentfirst}
@@ -11,7 +11,7 @@
 \usepackage{listings}
 \usepackage{nameref}
 \usepackage[usenames,dvipsnames]{xcolor}
-\usepackage[center]{caption}
+%\usepackage[center]{caption}
 
 \lstset{
 	backgroundcolor=\color{blue!4},
@@ -290,8 +290,21 @@ using Trail = unordered_map<Node, Node>;
 	\item предоставили средства визуализации для просмотра отмеченных узлов и путей.
 	\end{itemize}
 	
-	Каждый желающий может воспользоваться исходным кодом приложения, следуя условиям свободной лицензии, и воспроизвести получившиеся результаты.
+	\begin{figure}[ht]
+	\begin{subfigure}{0.5\textwidth}
+		\centering
+		\includegraphics[width=0.9\textwidth]{images/k1.png}
+	\end{subfigure}	
+	\begin{subfigure}{0.5\textwidth}
+		\centering
+		\includegraphics[width=0.9\textwidth]{images/k2.png}
+	\end{subfigure}	
+	\caption{Примеры кластеров}
+	\label{fig:cluster}
+	\end{figure}	
+	
 	Исходный код вместе с инструкцией по сборке и пользованию размещен на \textit{GitHub} \cite{github}.    
+	Каждый желающий может воспользоваться исходным кодом приложения, следуя условиям свободной лицензии, и воспроизвести получившиеся результаты.
     
 	\bibliographystyle{acm}
 	\bibliography{report}
