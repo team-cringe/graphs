@@ -81,11 +81,60 @@ auto median(const Map& map, const Buildings& from, const Buildings& to) -> Build
 void assessment(const Map& map, int houses_num, int facilities_num) {
     constexpr auto x = 800;
 
+    std::ofstream report { "report.txt" };
+
     auto houses = map.select_random_houses(houses_num);
     auto facilities = map.select_random_facilities(facilities_num);
 
-    closest(map, houses, facilities);
-    range(map, houses, facilities, x);
-    minmax(map, houses, facilities);
-    median(map, houses, facilities);
+    {
+        auto ch2f = closest(map, houses, facilities);
+        auto cf2h = closest(map, facilities, houses);
+
+        report << "Closest house -> facility:\n";
+        for (const auto& path: ch2f) {
+            auto[from, to] = path.ends();
+            report << from.id() << "---" << to.id() << "---" << path.distance() << "\n";
+        }
+
+        report << "Closest facility -> house:\n";
+        for (const auto& path: cf2h) {
+            auto[from, to] = path.ends();
+            report << from.id() << "---" << to.id() << "---" << path.distance() << "\n";
+        }
+    }
+
+    {
+        auto rh2f = range(map, houses, facilities, x);
+        auto rf2h = range(map, facilities, houses, x);
+
+        report << "In range house -> facility:\n";
+        for (const auto& path: rh2f) {
+            auto[from, to] = path.ends();
+            report << from.id() << "---" << to.id() << "---" << path.distance() << "\n";
+        }
+
+        report << "In range facility -> house:\n";
+        for (const auto& path: rf2h) {
+            auto[from, to] = path.ends();
+            report << from.id() << "---" << to.id() << "---" << path.distance() << "\n";
+        }
+    }
+
+    {
+        auto mmh2f = minmax(map, houses, facilities);
+        auto mmf2h = minmax(map, facilities, houses);
+
+        report << "Minmax house -> facility:\n";
+        report << mmh2f.id() << "\n";
+
+        report << "Minmax facility -> house:\n";
+        report << mmf2h.id() << "\n";
+    }
+
+    {
+        auto m = median(map, houses, facilities);
+
+        report << "Median:\n";
+        report << m.id() << "\n";
+    }
 }
