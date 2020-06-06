@@ -1,3 +1,2 @@
-std::unordered_set<Cluster> 
-    active_clusters(m_clusters.begin(), 
-    m_clusters.end());
+unordered_set<Cluster> ac(m_clusters.begin(),
+                          m_clusters.end());
