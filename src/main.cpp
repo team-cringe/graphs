@@ -3,56 +3,12 @@
 #include <optional>
 
 #include <fmt/format.h>
-#include <benchmark/benchmark.h>
 
 #include "p-ranav/argparse.hpp"
 
 #include "map.hpp"
 #include "assessment.hpp"
 #include "planning.hpp"
-
-#ifdef GRAPHS_RUN_BENCHMARK
-static void BM_ImportMap(benchmark::State& state) {
-    for (auto _: state) {
-        auto map = graphs::import_map_from_pbf("NNMap.pbf", false);
-    }
-}
-
-auto map = graphs::import_map_from_pbf("NNMap.pbf", false).value();
-
-static void BM_SelectBuildings(benchmark::State& state) {
-    for (auto _: state) {
-        map.select_random_houses(100);
-        map.select_random_facilities(100);
-    }
-}
-
-auto houses_1 = map.select_random_houses(1);
-auto facilities_1 = map.select_random_facilities(5);
-
-static void BM_ShortestPathsWithTraces(benchmark::State& state) {
-    for (auto _: state) {
-        auto house = *houses_1.begin();
-        map.shortest_paths_with_trace(house, facilities_1);
-    }
-}
-
-auto houses_2 = map.select_random_houses(1);
-auto facilities_2 = map.select_random_facilities(100);
-
-static void BM_ShortestPaths(benchmark::State& state) {
-    for (auto _: state) {
-        auto house = *houses_2.begin();
-        map.shortest_paths(house, facilities_2);
-    }
-}
-
-BENCHMARK(BM_ImportMap)->Unit(benchmark::kMillisecond);
-BENCHMARK(BM_SelectBuildings)->Unit(benchmark::kMillisecond);
-BENCHMARK(BM_ShortestPaths)->Unit(benchmark::kMillisecond);
-BENCHMARK(BM_ShortestPathsWithTraces)->Unit(benchmark::kMillisecond);
-BENCHMARK_MAIN();
-#endif
 
 namespace fs = std::filesystem;
 
