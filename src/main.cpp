@@ -60,6 +60,12 @@ int main(int argc, const char** argv) {
 
     if (extension == ".csv") {
         map = import_map_from_csv(filename);
+        auto paths = map.dijkstra(Node { 0 });
+        fmt::print("From: {}\n", 0);
+        for (const auto& path: paths) {
+            auto[to, d] = path;
+            fmt::print("\tto: {} ({} m)\n", to.id(), d);
+        }
     } else if (extension == ".pbf") {
         auto cache_name = filename.stem();
         auto recache = program["--recache"] == true

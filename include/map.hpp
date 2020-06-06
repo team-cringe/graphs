@@ -77,6 +77,8 @@ struct Map {
     auto shortest_paths_with_trace(Building from, const Buildings& to) const -> TracedPaths;
     auto shortest_paths(Building from, const Buildings& to) const -> Paths;
 
+    auto dijkstra(const Node& s) -> ShortestPaths;
+
     /**
      * Summarize all edges' weights.
      */

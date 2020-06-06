@@ -122,6 +122,11 @@ auto Map::weights_sum() const -> long double {
                            });
 }
 
+auto Map::dijkstra(const Node& s) -> ShortestPaths {
+    auto[paths, trail] = m_graph.dijkstra(s);
+    return paths;
+}
+
 bool export_map_to_csv(const Map& map, const fs::path& filename) {
     /*
      * Adjacency list.
