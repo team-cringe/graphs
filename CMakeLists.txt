@@ -30,7 +30,6 @@ target_include_directories(graphs PRIVATE ${INCLUDE})
 set_property(TARGET graphs PROPERTY CXX_STANDARD 17)
 
 # Required dynamic-link libraries.
-find_package(benchmark REQUIRED)
 find_package(fmt REQUIRED)
 find_package(Osmium REQUIRED COMPONENTS pbf)
 find_package(ZLIB REQUIRED)
@@ -50,7 +49,6 @@ if (CMAKE_BUILD_TYPE EQUAL "Release")
 endif ()
 
 target_link_libraries(graphs PUBLIC
-        benchmark::benchmark
         fmt::fmt
         ${OSMIUM_IO_LIBRARIES}
         ${ZLIB_LIBRARIES}
